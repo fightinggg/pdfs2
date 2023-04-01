@@ -21,7 +21,7 @@ env:
   dockerhub_password: ${{ secrets.DOCKERHUB_PASSWORD }}
   short_description: '😊 https://github.com/fightinggg/pdfs'
   readme_file: 'README.md'
-  Dockerfile: 'pdfs.Dockerfile'
+  Dockerfile: 'Dockerfile'
 
 
 jobs:
