@@ -68,6 +68,7 @@ int main() {
         }
         pthread_t th1;
         pthread_create(&th1, NULL, (void *) processConnect, (void *) conn);
+        pthread_join(th1, NULL);
     }
     close(server_sockfd);
 }
