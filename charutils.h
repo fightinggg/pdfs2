@@ -44,3 +44,12 @@ void splitString(const std::string &s, std::vector<std::string> &v, const std::s
         v.emplace_back(s.substr(pos1));
 }
 
+
+
+bool startsWith(const std::string &str, const std::string &prefix) {
+    if (str.size() < prefix.size()) {
+        return false;
+    }
+    return str.substr(0, prefix.size()) == prefix;
+}
+

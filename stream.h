@@ -6,7 +6,8 @@
 #include <bits/stdc++.h>
 #include <unistd.h>
 
-struct inputStream {
+class inputStream {
+public:
     int type; // 1 = fd stream
 
     int fd;
