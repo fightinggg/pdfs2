@@ -1,12 +1,8 @@
-#include <sys/socket.h>
-#include <stdio.h>
 #include <netinet/in.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <pthread.h>
+#include <bits/stdc++.h>
 #include "connect.h"
-#include <signal.h> // signal functions
+
+using namespace std;
 
 volatile sig_atomic_t stop = 0;
 
@@ -19,13 +15,14 @@ static void stop_handler(int sig) { // can be called asynchronously
 int main() {
     signal(SIGINT, stop_handler);
 
+
     int port = 8080;
 
     ///定义sockfd
     int server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     ///定义sockaddr_in
-    struct sockaddr_in server_sockaddr;
+    struct sockaddr_in server_sockaddr{};
     server_sockaddr.sin_family = AF_INET;
     server_sockaddr.sin_port = htons(port);
     server_sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -56,7 +53,7 @@ int main() {
     fflush(stdout);
 
     ///客户端套接字
-    struct sockaddr_in client_addr;
+    struct sockaddr_in client_addr{};
     socklen_t length = sizeof(client_addr);
 
     while (stop != 1) {
@@ -67,7 +64,7 @@ int main() {
             break;
         }
         pthread_t th1;
-        pthread_create(&th1, NULL, (void *) processConnect, (void *) conn);
+        pthread_create(&th1, NULL, processConnect, (void *) conn);
         pthread_join(th1, NULL);
     }
     close(server_sockfd);

@@ -2,9 +2,11 @@
 #define stream
 
 #include "utils.h"
+#include <netinet/in.h>
+#include <bits/stdc++.h>
+#include <unistd.h>
 
-
-struct istream {
+struct inputStream {
     int type; // 1 = fd stream
 
     int fd;
@@ -14,33 +16,33 @@ struct istream {
 };
 
 
-int __readFromFdStream(struct istream *in, char *buffer, int size);
+int __readFromFdStream(struct inputStream *in, char *buffer, int size);
 
-void __closeFdStream(struct istream *in);
+void __closeFdStream(struct inputStream *in);
 
-void __mergeFdStreamUsingChars(struct istream *pIstream, char *buf, int size);
+void __mergeFdStreamUsingChars(struct inputStream *pIstream, char *buf, int size);
 
-int readFromStream(struct istream *in, char *buffer, int size) {
+int readFromStream(struct inputStream *in, char *buffer, int size) {
     if (in->type == 1) {
         return __readFromFdStream(in, buffer, size);
     }
 }
 
 
-void closeStream(struct istream *in) {
+void closeStream(struct inputStream *in) {
     if (in->type == 1) {
         __closeFdStream(in);
     }
 }
 
-void mergeStreamUsingChars(struct istream *in, char *buf, int size) {
+void mergeStreamUsingChars(struct inputStream *in, char *buf, int size) {
     if (in->type == 1) {
         __mergeFdStreamUsingChars(in, buf, size);
     }
 }
 
 
-void initFdStream(struct istream *in, int fd) {
+void initFdStream(struct inputStream *in, int fd) {
     if (in->buf != NULL) {
         puts("memory error");
         exit(-1);
@@ -57,7 +59,7 @@ void initFdStream(struct istream *in, int fd) {
 // --------------------
 // --------------------
 
-int __readFromFdStream(struct istream *in, char *buffer, int size) {
+int __readFromFdStream(struct inputStream *in, char *buffer, int size) {
     if (in->buf_len != 0) {
         size = minInt(in->buf_len, size);
         memmove(buffer, in->buf, size);
@@ -79,21 +81,21 @@ int __readFromFdStream(struct istream *in, char *buffer, int size) {
     return readSize;
 }
 
-void __closeFdStream(struct istream *in) {
+void __closeFdStream(struct inputStream *in) {
     close(in->fd);
     if (in->buf != NULL) {
-        free(in->buf);
+        delete in->buf;
     }
 }
 
-void __mergeFdStreamUsingChars(struct istream *in, char *buf, int size) {
+void __mergeFdStreamUsingChars(struct inputStream *in, char *buf, int size) {
     if (in->buf_len != 0) {
         puts("__mergeFdStreamUsingChars ERR ");
         exit(-1);
     }
 
     in->buf_len = size;
-    in->buf = malloc(size);
+    in->buf = new char[size];
     memcpy(in->buf, buf, size);
 }
 

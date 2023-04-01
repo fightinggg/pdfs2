@@ -1,7 +1,7 @@
 FROM fightinggg/cpp-dev-env:master
 COPY . /app
 WORKDIR /app
-RUN gcc -lpthread main.c -o pdfs
+RUN g++ -lpthread main.cpp -o pdfs
 
 FROM centos:8
 COPY --from=0 /app/pdfs /usr/local/pdfs/bin/pdfs
