@@ -64,9 +64,10 @@ int main() {
             break;
         }
         pthread_t th1;
-        pthread_create(&th1, NULL, processConnect, (void *) conn);
+        pthread_create(&th1, NULL, processConnect, (void *) (conn));
         pthread_join(th1, NULL);
     }
+
     close(server_sockfd);
 }
 

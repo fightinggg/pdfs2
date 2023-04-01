@@ -26,6 +26,7 @@ int readFromStream(struct inputStream *in, char *buffer, int size) {
     if (in->type == 1) {
         return __readFromFdStream(in, buffer, size);
     }
+    return 0;
 }
 
 

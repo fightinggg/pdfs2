@@ -4,10 +4,12 @@
 #include <algorithm>
 #include "stream.h"
 #include "charutils.h"
+#include "handler.h"
 
-volatile long vv = 0;
+
 
 void doHttp(char head[1024], int len, struct inputStream in, int outfd) {
+
     string s(head, len);
     vector<string> split;
 
@@ -19,17 +21,32 @@ void doHttp(char head[1024], int len, struct inputStream in, int outfd) {
         s.replace(pos, oldStr.length(), newStr);
         pos += newStr.length();
     }
-
     splitString(s, split, "\n");
 
     string requestLine = split[0];
     split.erase(split.begin());
 
-    string reqdata = "Welcome TO PDFS V2.0, We Will Come back Soon, vv = " + to_string(++vv) + "\n";
-    string header = "HTTP/1.1 200 OK\nContent-Length: " + to_string(reqdata.size()) + "\n\n";
-    send(outfd, header.data(), header.size(), 0);
-    send(outfd, reqdata.data(), reqdata.size(), 0);
+    map<string, string> headers;
+    for (const auto &item: split) {
+        vector<string> kv;
+        splitString(item, kv, " ");
+        headers[kv[0]] = kv[1];
+    }
+
+    vector<string> requestLineParams;
+    splitString(requestLine, requestLineParams, " ");
+    if (requestLineParams.size() == 3) {
+        string method = requestLineParams[0];
+        string url = requestLineParams[1];
+        doHandler(method, url, headers, in, outfd);
+    } else {
+        string header = "HTTP/1.1 403 Forbidden\n\n";
+        send(outfd, header.data(), header.size(), 0);
+    }
+
 }
+
+
 
 void *processConnect(void *args) {
     char buffer[1024]; // 1KB
@@ -43,10 +60,11 @@ void *processConnect(void *args) {
 
     while (1) {
         int len = readFromStream(&in, buffer, sizeof(buffer));
-        if (len == 0) {
+        if (len <= 0) {
             break;
         }
-        puts(buffer);
+
+//        puts(buffer);
 
         int find = findIndex(buffer, len, "\n\n", 2);
         if (find == len) {
@@ -62,7 +80,8 @@ void *processConnect(void *args) {
     }
 
     closeStream(&in);
-    puts("\n..done");
+    puts("......done");
+    return NULL;
 }
 
 

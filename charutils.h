@@ -5,7 +5,7 @@
 
 using namespace std;
 
-int findIndex(char *s, int len, char *sub, int sublen) {
+int findIndex(const char *s, int len, const char *sub, int sublen) {
     if (sublen > 100) {
         puts("sublen > 100...");
         exit(-1);
