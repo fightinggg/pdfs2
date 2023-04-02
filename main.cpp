@@ -57,18 +57,21 @@ int main() {
     struct sockaddr_in client_addr{};
     socklen_t length = sizeof(client_addr);
 
+
     while (stop != 1) {
         ///成功返回非负描述字，出错返回-1
+        printf("accept:\n");
         int fd = accept(server_sockfd, (struct sockaddr *) &client_addr, &length);
         if (fd < 0) {
             perror("connect");
             break;
         }
-        printf("connect to fd %d\n",fd);
+        printf("connect to fd %d\n", fd);
         fflush(stdout);
         pthread_t th1;
         pthread_create(&th1, NULL, processConnect, (void *) (fd));
-        pthread_join(th1, NULL);
+//        pthread_join(th1, NULL);
+
     }
 
     close(server_sockfd);

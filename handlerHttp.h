@@ -66,10 +66,12 @@ bool decodeHttp(int fd, HttpReq &req) {
         return false;
     }
     req.body = new FdInputStream(fd);
+    printf("recv: %s %s", req.method.data(), req.url.data());
     return true;
 }
 
-void doHandlerHttp(int fd) {
+
+void doHandlerHttpSimple(int fd) {
     HttpReq req;
     HttpRsp rsp;
 
@@ -88,7 +90,7 @@ void doHandlerHttp(int fd) {
     codeString[403] = "Forbidden";
     codeString[404] = "NotFound";
 
-    string header = "HTTP/1.1 " + to_string(rsp.status) + " " + codeString[rsp.status] + "\n";
+    string header = "HTTP/1.0 " + to_string(rsp.status) + " " + codeString[rsp.status] + "\n";
     int bodySize = rsp.body == nullptr ? 0 : rsp.body->size();
     if (bodySize != -1) {
         header += "Content-Length: " + to_string(bodySize) + "\n";
@@ -111,5 +113,10 @@ void doHandlerHttp(int fd) {
     delete rsp.body;
 
     delete req.body;
+}
+
+void doHandlerHttp(int fd) {
+    doHandlerHttpSimple(fd);
     close(fd);
+    printf("close fd=%d\n", fd);
 }
