@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <bits/stdc++.h>
+#include "allheader.h"
 
 using namespace std;
 
@@ -30,6 +30,10 @@ int findIndex(const char *s, int len, const char *sub, int sublen) {
 
 
 void splitString(const std::string &s, std::vector<std::string> &v, const std::string &c) {
+    if (c.empty()) {
+        printf("splitString ERROR");
+        exit(-1);
+    }
     std::string::size_type pos1, pos2;
     size_t len = s.length();
     pos2 = s.find(c);
@@ -43,7 +47,6 @@ void splitString(const std::string &s, std::vector<std::string> &v, const std::s
     if (pos1 != len)
         v.emplace_back(s.substr(pos1));
 }
-
 
 
 bool startsWith(const std::string &str, const std::string &prefix) {

@@ -1,105 +1,95 @@
-#ifndef stream
-#define stream
+#pragma once
 
 #include "utils.h"
 #include <netinet/in.h>
 #include <bits/stdc++.h>
 #include <unistd.h>
 
-class inputStream {
+
+class InputStream {
+private:
+    // return !=1, if nothing to read.
+    virtual int read(char *) {
+        printf("InputStream virtual int read");
+        exit(-1);
+    }
+
 public:
-    int type; // 1 = fd stream
 
-    int fd;
+    virtual void close() {
+        printf("InputStream virtual void close");
+        exit(-1);
+    }
 
-    int buf_len;
-    char *buf;
+    // return how much bytes remained to read
+    // return -1 if unknown
+    virtual int size() {
+        return -1;
+    }
+
+    string readNbytes(int n) {
+        string res;
+        while (true) {
+            if (res.size() == n) {
+                return res;
+            }
+
+            char ch;
+            if (read(&ch) != 1) {
+                return res;
+            } else {
+                res += ch;
+            }
+        }
+    }
 };
 
 
-int __readFromFdStream(struct inputStream *in, char *buffer, int size);
+class FdInputStream : public InputStream {
+    int fd;
 
-void __closeFdStream(struct inputStream *in);
-
-void __mergeFdStreamUsingChars(struct inputStream *pIstream, char *buf, int size);
-
-int readFromStream(struct inputStream *in, char *buffer, int size) {
-    if (in->type == 1) {
-        return __readFromFdStream(in, buffer, size);
-    }
-    return 0;
-}
-
-
-void closeStream(struct inputStream *in) {
-    if (in->type == 1) {
-        __closeFdStream(in);
-    }
-}
-
-void mergeStreamUsingChars(struct inputStream *in, char *buf, int size) {
-    if (in->type == 1) {
-        __mergeFdStreamUsingChars(in, buf, size);
-    }
-}
-
-
-void initFdStream(struct inputStream *in, int fd) {
-    if (in->buf != NULL) {
-        puts("memory error");
-        exit(-1);
+    int read(char *ch) override {
+        return recv(fd, ch, 1, 0);
     }
 
-    in->type = 1;
-    in->fd = fd;
-    in->buf_len = 0;
-    in->buf = NULL;
-}
-
-// --------------------
-// --------------------
-// --------------------
-// --------------------
-
-int __readFromFdStream(struct inputStream *in, char *buffer, int size) {
-    if (in->buf_len != 0) {
-        size = minInt(in->buf_len, size);
-        memmove(buffer, in->buf, size);
-        for (int i = size; i < in->buf_len; i++) {
-            in->buf[i - size] = in->buf[i];
-        }
-        in->buf_len -= size;
-        return size;
+    void close() override {
+        ::close(fd);
     }
-    return recv(in->fd, buffer, size, 0);
-    int readSize = 0;
-    while (readSize < size) {
-        int newSize = recv(in->fd, buffer + readSize, size, 0);
-        readSize += newSize;
-        if (newSize == 0) {
-            break;
+
+public:
+
+    explicit FdInputStream(int fd) {
+        this->fd = fd;
+    }
+};
+
+
+class StringInputStream : public InputStream {
+    string s;
+    int readed = 0;
+
+
+    int read(char *ch) override {
+        if (readed < s.size()) {
+            *ch = s[readed++];
+            return 1;
+        } else {
+            return 0;
         }
     }
-    return readSize;
-}
 
-void __closeFdStream(struct inputStream *in) {
-    close(in->fd);
-    if (in->buf != NULL) {
-        delete in->buf;
-    }
-}
-
-void __mergeFdStreamUsingChars(struct inputStream *in, char *buf, int size) {
-    if (in->buf_len != 0) {
-        puts("__mergeFdStreamUsingChars ERR ");
-        exit(-1);
+    void close() override {
     }
 
-    in->buf_len = size;
-    in->buf = new char[size];
-    memcpy(in->buf, buf, size);
-}
+    int size() override {
+        return s.size() - readed;
+    }
+
+public:
+
+    explicit StringInputStream(string s) {
+        this->s = s;
+    }
+};
 
 
-#endif

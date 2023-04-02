@@ -1,5 +1,4 @@
-#include <netinet/in.h>
-#include <bits/stdc++.h>
+#include "allheader.h"
 #include "connect.h"
 
 using namespace std;
@@ -14,6 +13,8 @@ static void stop_handler(int sig) { // can be called asynchronously
 
 int main() {
     signal(SIGINT, stop_handler);
+
+    initPdfsSystem();
 
 
     int port = 8080;
@@ -58,13 +59,15 @@ int main() {
 
     while (stop != 1) {
         ///成功返回非负描述字，出错返回-1
-        int conn = accept(server_sockfd, (struct sockaddr *) &client_addr, &length);
-        if (conn < 0) {
+        int fd = accept(server_sockfd, (struct sockaddr *) &client_addr, &length);
+        if (fd < 0) {
             perror("connect");
             break;
         }
+        printf("connect to fd %d\n",fd);
+        fflush(stdout);
         pthread_t th1;
-        pthread_create(&th1, NULL, processConnect, (void *) (conn));
+        pthread_create(&th1, NULL, processConnect, (void *) (fd));
         pthread_join(th1, NULL);
     }
 
