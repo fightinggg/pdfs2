@@ -10,18 +10,22 @@ pthread_t th1;
 volatile bool stopThread = false;
 
 void *inner_join(void *) {
-    while (!stopThread) {
-        printf("x");
-        ::fflush(stdout);
-        pthread_t *pthread = nullptr;
-        if (blockingQueue.pop(pthread, 1000)) {
-            printf("join pthread start = %ld\n", (long) pthread);
-            pthread_join(*pthread, nullptr);
-            printf("join pthread end = %ld\n",  (long) pthread);
-            delete pthread;
+    while (true) {
+        if (stopThread) {
+            pthread_t *pthread = nullptr;
+            if (blockingQueue.pop(pthread, 1000)) {
+                pthread_join(*pthread, nullptr);
+                delete pthread;
+            } else {
+                if (stopThread) {
+                    break;
+                }
+            }
         } else {
-            if (stopThread) {
-                break;
+            pthread_t *pthread = nullptr;
+            if (blockingQueue.pop(pthread, 1000)) {
+                pthread_join(*pthread, nullptr);
+                delete pthread;
             }
         }
     }
@@ -58,7 +62,7 @@ void submit(func f, void *args) {
         return res;
     };
 
-    auto *th1 = new pthread_t();
-    pthread_create(th1, nullptr, proxyf, (void *) node);
-    blockingQueue.push(th1);
+    auto *newthread = new pthread_t();
+    pthread_create(newthread, nullptr, proxyf, (void *) node);
+    blockingQueue.push(newthread);
 }

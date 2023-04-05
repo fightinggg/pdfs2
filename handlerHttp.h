@@ -61,9 +61,11 @@ bool decodeHttpHeaders(int fd, HttpReq &req) {
 
 bool decodeHttp(int fd, HttpReq &req) {
     if (!decodeHttpLine(fd, req)) {
+        req.body = nullptr;
         return false;
     }
     if (!decodeHttpHeaders(fd, req)) {
+        req.body = nullptr;
         return false;
     }
     req.body = new FdInputStream(fd);
@@ -109,13 +111,15 @@ void doHandlerHttpSimple(int fd) {
             }
             send(fd, data.data(), data.size(), 0);
         }
+        rsp.body->close();
+        delete rsp.body;
     }
 
-    rsp.body->close();
-    printf("delete body:%ld\n",(long) rsp.body);
-    delete rsp.body;
 
-    delete req.body;
+    if (req.body != nullptr) {
+        delete req.body;
+    }
+
 }
 
 void doHandlerHttp(int fd) {

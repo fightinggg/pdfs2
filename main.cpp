@@ -16,7 +16,7 @@ static void stop_handler(int sig) { // can be called asynchronously
 
 int main() {
     threadinit();
-    
+
     signal(SIGINT, stop_handler);
 
     initPdfsSystem();

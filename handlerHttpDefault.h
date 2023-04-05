@@ -14,5 +14,4 @@ void doHttpDefault(const HttpReq &req, HttpRsp &rsp) {
 
     rsp.status = 404;
     rsp.body = new StringInputStream(rspdata);
-    printf("new body:%ld\n", (long) rsp.body);
 }
