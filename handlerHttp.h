@@ -4,13 +4,14 @@
 #include "handlerHttpApi.h"
 #include "httpMsg.h"
 #include "stringUtils.h"
+#include "io/fdio.h"
 
 bool decodeHttpLine(int fd, HttpReq &req) {
     string reqLine;
     char ch;
 
     while (true) {
-        if (recv(fd, &ch, 1, 0) != 1) {
+        if (!readFd(fd, ch)) {
             // nothing to read , skip
             break;
         }
@@ -40,7 +41,7 @@ bool decodeHttpHeaders(int fd, HttpReq &req) {
     int size = 0;
 
     while (true) {
-        if (recv(fd, &ch, 1, 0) != 1) {
+        if (!readFd(fd, ch)) {
             // nothing to read , skip
             return true;
         }
@@ -66,7 +67,7 @@ bool decodeHttp(int fd, HttpReq &req) {
         return false;
     }
     req.body = new FdInputStream(fd);
-    printf("recv: %s %s", req.method.data(), req.url.data());
+    printf("recv: %s %s\n", req.method.data(), req.url.data());
     return true;
 }
 
@@ -74,6 +75,7 @@ bool decodeHttp(int fd, HttpReq &req) {
 void doHandlerHttpSimple(int fd) {
     HttpReq req;
     HttpRsp rsp;
+    rsp.body = nullptr;
 
     if (!decodeHttp(fd, req)) {
         rsp.status = 400;
@@ -110,6 +112,7 @@ void doHandlerHttpSimple(int fd) {
     }
 
     rsp.body->close();
+    printf("delete body:%ld\n",(long) rsp.body);
     delete rsp.body;
 
     delete req.body;

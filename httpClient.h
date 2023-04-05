@@ -1,5 +1,87 @@
 #include "allheader.h"
 #include "httpMsg.h"
+#include "threadpool/threadpool.h"
+#include <curl/curl.h>
+
+static size_t writeMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+    size_t realsize = size * nmemb;
+    char *contentsChar = (char *) contents;
+    auto body = (BlockQueueInputStream *) userp;
+    for (int i = 0; i < size * nmemb; i++) {
+        body->push(contentsChar[i]);
+    }
+//    printf("size=%d\n", (int) realsize);
+    fflush(stdout);
+    return realsize;
+};
+
+
+static size_t headerCallback(char *buffer, size_t size, size_t nitems, void *userdata) {
+//    printf("headerCallback?");
+//    fflush(stdout);
+
+
+    size_t nbytes = size * nitems;
+//    ::printf("%s", string(buffer, nbytes).data());
+//    fflush(stdout);
+
+    return nbytes;
+}
+
+
+bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
+    rsp.body = new BlockQueueInputStream();
+
+
+    struct Node {
+        string url;
+        InputStream *rspdata{};
+    };
+
+    Node *node = new Node;
+    node->url = "https://" + req.host + ":" + to_string(req.port) + req.url;
+    node->rspdata = rsp.body;
+
+    submit([](void *args) -> void * {
+        auto node = (Node *) args;
+
+        auto body = (BlockQueueInputStream *) node->rspdata;
+        auto url = node->url;
+
+        delete node;
+
+        CURL *curl;
+        CURLcode res;
+
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+
+        curl = curl_easy_init();
+        if (curl) {
+
+            curl_easy_setopt(curl, CURLOPT_URL, url.data());
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, body);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+
+
+            res = curl_easy_perform(curl);
+
+
+            if (res != CURLE_OK) {
+                printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            }
+            body->closePush();
+            curl_easy_cleanup(curl);
+        }
+
+        curl_global_cleanup();
+        return nullptr;
+    }, node);
+
+    return true;
+}
+
 
 bool dnsParse(string host, string &parse) {
     struct addrinfo hints{}, *res;

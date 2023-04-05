@@ -9,9 +9,9 @@ void githubApiFswrite(const map<string, string> &fs, const string &name, InputSt
     req.method = "GET";
     req.url = "/";
     req.host = "140.82.113.4";
-    req.port = 80;
+    req.port = 443;
 
-    httpRequest(req, rsp);
+    httpsRequest(req, rsp);
     puts(rsp.body->readNbytes(2000).data());
     rsp.body->close();
     delete rsp.body;
@@ -30,9 +30,9 @@ InputStream *githubApiFsRead(const map<string, string> &fs, const string &name) 
     req.method = "GET";
     req.url = "/repos/" + githubUsername + "/" + githubRepoName + "/contents/" + fileName;
     req.host = "api.github.com";
-    req.port = 80;
+    req.port = 443;
 
-    httpRequest(req, rsp);
+    httpsRequest(req, rsp);
     return rsp.body;
 //    puts(rsp.body->readNbytes(2000).data());
 //    rsp.body->close();

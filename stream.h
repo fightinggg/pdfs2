@@ -1,9 +1,9 @@
 #pragma once
 
 #include "utils.h"
-#include <netinet/in.h>
-#include <bits/stdc++.h>
-#include <unistd.h>
+#include "allheader.h"
+#include "sync/block_queue.h"
+#include "io/fdio.h"
 
 
 class InputStream {
@@ -14,7 +14,9 @@ private:
         exit(-1);
     }
 
+
 public:
+    virtual ~InputStream() = default;
 
     virtual void close() {
         printf("InputStream virtual void close");
@@ -27,10 +29,10 @@ public:
         return -1;
     }
 
-    string readNbytes(int n) {
+    string readNbytes(int n = -1) {
         string res;
         while (true) {
-            if (res.size() == n) {
+            if (n != -1 && res.size() == n) {
                 return res;
             }
 
@@ -49,7 +51,7 @@ class FdInputStream : public InputStream {
     int fd;
 
     int read(char *ch) override {
-        return recv(fd, ch, 1, 0);
+        return readFd(fd, *ch) ? 1 : 0;
     }
 
     void close() override {
@@ -82,14 +84,61 @@ class StringInputStream : public InputStream {
     }
 
     int size() override {
-        return s.size() - readed;
+        return ((int) s.size()) - readed;
     }
 
 public:
 
     explicit StringInputStream(string s) {
-        this->s = s;
+        this->s = std::move(s);
+//        this->s = s;
     }
+};
+
+
+class BlockQueueInputStream : public InputStream {
+    BlockingQueue<char> blockingQueue;
+    // 禁止指令重排， 强制从内存读取数据
+    volatile bool _close = false;
+    volatile bool _closeWrite = false;
+
+
+    int read(char *ch) override {
+        int i = 0;
+        while (true) {
+            if (_close) {
+                return 0;
+            }
+            if (blockingQueue.pop(*ch, 100)) {
+                return 1;
+            }
+            if (i++ == 30) {
+                return 0;
+            }
+            if (_closeWrite) {
+                _close = true;
+            }
+        }
+    }
+
+    void close() override {
+    }
+
+    int size() override {
+        return -1;
+    }
+
+public:
+
+    void push(char ch) {
+        blockingQueue.push(ch);
+    }
+
+    void closePush() {
+        _closeWrite = true;
+    }
+
+    explicit BlockQueueInputStream() = default;
 };
 
 

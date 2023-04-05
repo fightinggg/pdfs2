@@ -6,7 +6,6 @@
 
 void *processConnect(void *args) {
     doHandlerHttp(*(int *) (&args));
-    pthread_detach(pthread_self());
     return nullptr;
 }
 
