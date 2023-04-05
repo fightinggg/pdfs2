@@ -17,7 +17,7 @@ bool readFd(int fd, char &ch) {
         if (recv(fd, &ch, 1, 0) == 1) {
             return true;
         } else {
-            usleep(100 * 1000);
+            usleep(1000 * 1000);
         }
     }
 }

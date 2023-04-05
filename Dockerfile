@@ -14,3 +14,4 @@ CMD "pdfs"
 
 #  docker build -t  pdfs .  && docker rm -f pdfs &&  docker run -d -p 8081:8080 --name pdfs pdfs && docker logs -f pdfs
 #  docker build -t  pdfs .  && docker rm -f pdfs &&  docker run -d -p 8081:8080 --name pdfs pdfs && docker stats
+# docker pull  fightinggg/pdfs:master && docker rm -f pdfs &&  docker run -d -p 8080:8080 --name pdfs fightinggg/pdfs:master && docker logs -f pdfs

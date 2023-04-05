@@ -83,8 +83,8 @@ int main() {
                     fflush(stdout);
                     break;
                 } else {
-                    // wait 100ms
-                    usleep(100 * 000);
+                    // wait 1000ms
+                    usleep(1000 * 000);
                     continue;
                 }
             } else {
