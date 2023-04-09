@@ -5,14 +5,9 @@
 
 using namespace std;
 
-volatile sig_atomic_t stop = 0;
-
 static void stop_handler(int sig) { // can be called asynchronously
     puts("\nplease wait..");
-    stop = 1; // set flag
-    fdStop = true;
 }
-
 
 int main() {
     threadinit();
@@ -65,17 +60,20 @@ int main() {
         FD_ZERO(&fdread);
         FD_SET(server_sockfd, &fdread);
 
+        // select成功时返回就绪（可读、可写和异常）文件描述符的总数。
+        // 如果在超时时间内没有任何文件描述符就绪，select将返回0。
+        // select失败时返回-1。
+        // 如果在select等待期间，程序接收到信号，则select立即返回-1，并设置errno为EINTR。
         int ret = select(server_sockfd + 1, &fdread, nullptr, nullptr, nullptr);
         if (ret == -1 && errno == EINTR) { //信号
             break;
         }
         if (ret == 0) {
-            continue;
-        }
-        if (ret < 0) {
-            puts("ERROR ret <= 0");
+            ::puts("accept select ret == 0");
+            fflush(stdout);
             break;
         }
+        // -1 on error 1 on something to read
 
         ///客户端套接字
         struct sockaddr_in client_addr{};
