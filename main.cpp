@@ -7,6 +7,7 @@ using namespace std;
 
 static void stop_handler(int sig) { // can be called asynchronously
     puts("\nplease wait..");
+    fdstop = true;
 }
 
 int main() {
@@ -66,6 +67,8 @@ int main() {
         // 如果在select等待期间，程序接收到信号，则select立即返回-1，并设置errno为EINTR。
         int ret = select(server_sockfd + 1, &fdread, nullptr, nullptr, nullptr);
         if (ret == -1 && errno == EINTR) { //信号
+            ::puts("STOP accept new connecting");
+            fflush(stdout);
             break;
         }
         if (ret == 0) {
@@ -91,5 +94,6 @@ int main() {
 
     close(server_sockfd);
     puts("\nbye bye\n");
+
 }
 

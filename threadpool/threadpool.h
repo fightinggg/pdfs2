@@ -13,7 +13,8 @@ void *inner_join(void *) {
     ::printf("wait %d thread to exit\n", sz);
 
     while ((sz = counter) > 0) {
-        ::printf("wait %d thread to exit\n", sz);
+        ::printf("%d", sz);
+        ::fflush(stdout);
         usleep(1000000);
     }
 

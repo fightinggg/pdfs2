@@ -13,6 +13,7 @@ bool decodeHttpLine(int fd, HttpReq &req) {
     while (true) {
         if (!readFd(fd, ch)) {
             // nothing to read , skip
+            puts("decodeHttpLine ERROR");
             break;
         }
         if (ch != '\r' && ch != '\n') {
@@ -116,6 +117,7 @@ void doHandlerHttpSimple(int fd) {
     }
 
 
+    
     if (req.body != nullptr) {
         delete req.body;
     }

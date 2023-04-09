@@ -2,25 +2,34 @@
 
 #include "../allheader.h"
 
+volatile bool fdstop = false;
 
 bool readFd(int fd, char &ch) {
+    for (int i = 0; true; i++) {
+        if (fdstop) {
+            return false;
+        }
 
-    //我们不知道内核的读缓冲区是否有数据到达，所有我们委托内核去检查读缓冲区
-    //类似内核去检查的 io多路转发 函数有 eppol select  eppol_wait
-    //我这里暂时用select 去检查  他是跨平台的
-    fd_set fdread;
-    FD_ZERO(&fdread);
-    FD_SET(fd, &fdread);
+        fd_set fdread;
+        FD_ZERO(&fdread);
+        FD_SET(fd, &fdread);
+        timeval timeout{1, 0};
+        int ret = select(fd + 1, &fdread, nullptr, nullptr, &timeout);
+        if (ret == 0) {
+            continue;
+        }
 
-    int ret = select(fd + 1, &fdread, nullptr, nullptr, nullptr);
-    if (ret == -1 && errno == EINTR) { // 信号
-        return false;
-    }
+        if (ret == -1) {
+            puts("readFd error");
+            ::fflush(stdout);
+            return false;
+        }
 
 
-    if (recv(fd, &ch, 1, 0) == 1) {
-        return true;
-    } else {
-        return false;
+        if (recv(fd, &ch, 1, 0) == 1) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
