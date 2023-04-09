@@ -36,17 +36,23 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
     struct Node {
         string url;
         InputStream *rspdata{};
+        map<string, string> reqheaders;
     };
 
     Node *node = new Node;
     node->url = "https://" + req.host + ":" + to_string(req.port) + req.url;
     node->rspdata = rsp.body;
+    node->reqheaders = req.headers;
 
+    // req and rsp maybe remove
     submit([](void *args) -> void * {
         auto node = (Node *) args;
 
         auto body = (BlockQueueInputStream *) node->rspdata;
         auto url = node->url;
+        auto reqheaders = node->reqheaders;
+
+        puts(url.data());
 
         delete node;
 
@@ -58,12 +64,21 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
         curl = curl_easy_init();
         if (curl) {
 
+            struct curl_slist *chunk = nullptr;
+            for (const auto &item: reqheaders) {
+                auto headLine = item.first + ":" + item.second;
+                chunk = curl_slist_append(chunk, headLine.data());
+            }
+
             curl_easy_setopt(curl, CURLOPT_URL, url.data());
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+
+
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
             curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, body);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
             res = curl_easy_perform(curl);
 

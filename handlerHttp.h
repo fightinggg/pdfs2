@@ -117,10 +117,10 @@ void doHandlerHttpSimple(int fd) {
     }
 
 
-    
-    if (req.body != nullptr) {
-        delete req.body;
-    }
+
+//    if (req.body != nullptr) {
+    delete req.body;
+//    }
 
 }
 

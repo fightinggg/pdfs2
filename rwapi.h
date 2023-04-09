@@ -6,8 +6,8 @@
 
 Pdfs pdfs;
 
-void initPdfsSystem() {
-    initPdfs(&pdfs);
+void initPdfsSystem(int argc, char **args) {
+    initPdfs(&pdfs, argc, args);
 }
 
 vector<string> parsePath(const string &filename) {

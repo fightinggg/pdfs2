@@ -18,5 +18,5 @@
 #include <fcntl.h>
 
 #include <utility>
-
+#include <getopt.h>
 using namespace std;

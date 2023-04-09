@@ -20,8 +20,9 @@ void githubApiFswrite(const map<string, string> &fs, const string &name, InputSt
 
 InputStream *githubApiFsRead(const map<string, string> &fs, const string &name) {
     string githubUsername = "fightinggg";
-    string githubRepoName = "pdfs-data";
-    string fileName = "a.txt";
+    string githubRepoName = "pdfs-data-githubapi";
+    string fileName = "-kM8Jt+BpnR3LBV-i4Fh5Q==.bin";
+    string githubToken = fs.at("githubToken");
 
     HttpReq req;
     HttpRsp rsp;
@@ -30,6 +31,10 @@ InputStream *githubApiFsRead(const map<string, string> &fs, const string &name) 
     req.host = "api.github.com";
     req.port = 443;
 
+    req.headers["Authorization"] = "Bearer " + githubToken;
+    req.headers["Accept"] = "application/vnd.github.v3.raw";
+    req.headers["X-GitHub-Api-Version"] = "2022-11-28";
+    req.headers["User-Agent"] = "libcurl";
     httpsRequest(req, rsp);
     return rsp.body;
 }

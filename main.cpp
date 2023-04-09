@@ -10,12 +10,12 @@ static void stop_handler(int sig) { // can be called asynchronously
     fdstop = true;
 }
 
-int main() {
+int main(int argc, char **args) {
     threadinit();
 
     signal(SIGINT, stop_handler);
 
-    initPdfsSystem();
+    initPdfsSystem(argc, args);
 
 
     int port = 8080;
