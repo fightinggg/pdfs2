@@ -23,8 +23,6 @@ InputStream *githubApiFsRead(const map<string, string> &fs, const string &name) 
     string githubRepoName = "pdfs-data";
     string fileName = "a.txt";
 
-    //TODO https
-
     HttpReq req;
     HttpRsp rsp;
     req.method = "GET";
@@ -34,7 +32,4 @@ InputStream *githubApiFsRead(const map<string, string> &fs, const string &name) 
 
     httpsRequest(req, rsp);
     return rsp.body;
-//    puts(rsp.body->readNbytes(2000).data());
-//    rsp.body->close();
-//    delete rsp.body;
 }
