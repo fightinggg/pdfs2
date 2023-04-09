@@ -59,39 +59,31 @@ int main() {
     printf("PDFS listen at port %d\n", port);
     fflush(stdout);
 
-    ///客户端套接字
-    struct sockaddr_in client_addr{};
-    socklen_t length = sizeof(client_addr);
-
-    // 非阻塞
-    //第一个参数server_sockfd是要获取标志的套接字文件描述符。
-    //第二个参数F_GETFL表示获取文件描述符标志位。
-    //第三个参数0表示不需要修改标志位。
-    int flags = fcntl(server_sockfd, F_GETFL, 0);
-    fcntl(server_sockfd, F_SETFL, flags | O_NONBLOCK);
-
     while (true) {
-//        printf("accept");
-//        ::fflush(stdout);
-        ///成功返回非负描述字，出错返回-1
+        // select
+        fd_set fdread;
+        FD_ZERO(&fdread);
+        FD_SET(server_sockfd, &fdread);
+
+        int ret = select(server_sockfd + 1, &fdread, nullptr, nullptr, nullptr);
+        if (ret == -1 && errno == EINTR) { //信号
+            break;
+        }
+        if (ret == 0) {
+            continue;
+        }
+        if (ret < 0) {
+            puts("ERROR ret <= 0");
+            break;
+        }
+
+        ///客户端套接字
+        struct sockaddr_in client_addr{};
+        socklen_t length = sizeof(client_addr);
         int fd = accept(server_sockfd, (struct sockaddr *) &client_addr, &length);
         if (fd == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // 没有客户端连接，请继续轮询
-                if (stop) {
-                    printf("stop accept new connecting\n");
-                    fflush(stdout);
-                    break;
-                } else {
-                    // wait 1000ms
-                    usleep(1000 * 000);
-                    continue;
-                }
-            } else {
-                // 其他错误，处理失败情况
-                perror("connect");
-                break;
-            }
+            perror("connect");
+            break;
         }
         printf("connect to fd %d\n", fd);
         fflush(stdout);
@@ -99,11 +91,7 @@ int main() {
     }
     threadstopAndjoin();
 
-    int closeRet = close(server_sockfd);
-    printf("close: %d\n", closeRet);
+    close(server_sockfd);
     puts("\nbye bye\n");
-    ::fflush(stdout);
-
-
 }
 
