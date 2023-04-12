@@ -1,3 +1,5 @@
+#pragma once
+
 #include <bits/stdc++.h>
 #include <netinet/in.h>
 
@@ -20,3 +22,9 @@
 #include <utility>
 #include <getopt.h>
 using namespace std;
+
+
+#include "oncrpc/nfs.h"
+//#include "oncrpc/nfs_svc.c"
+//#include "oncrpc/nfs_clnt.c"
+//#include "oncrpc/nfs_xdr.c"
