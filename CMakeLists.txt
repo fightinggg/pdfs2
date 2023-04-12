@@ -13,7 +13,9 @@ target_link_libraries(pdfs ${CURL_LIBRARIES})
 target_link_libraries(pdfs Threads::Threads)
 
 
-add_executable(nfsserver oncrpc/nfs_svc.c oncrpc/nfs_server.c)
-target_link_libraries(nfsserver ${CURL_LIBRARIES})
-target_link_libraries(nfsserver Threads::Threads)
+add_executable(nfsserver oncrpc/nfs_svc.c oncrpc/nfs_server.c  oncrpc/nfs_xdr.c oncrpc/nfs_clnt.c)
+target_link_libraries(nfsserver tirpc)
+
+add_executable(nfsclient oncrpc/nfs_client.c  oncrpc/nfs_xdr.c oncrpc/nfs_clnt.c)
+target_link_libraries(nfsclient tirpc)
 # sudo apt-get install libcurl4-openssl-dev

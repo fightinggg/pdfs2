@@ -15,5 +15,7 @@ test_proc_2_svc(struct TEST *argp, struct svc_req *rqstp)
 	 * insert server code here
 	 */
 
+    puts("hi");
+
 	return &result;
 }

@@ -28,32 +28,32 @@ test_prog_2(struct svc_req *rqstp, register SVCXPRT *transp)
 
 	switch (rqstp->rq_proc) {
 	case NULLPROC:
-//		(void) svc_sendreply (transp, (xdrproc_t) xdr_void, (char *)NULL);
+		(void) svc_sendreply (transp, (xdrproc_t) xdr_void, (char *)NULL);
 		return;
 
 	case TEST_PROC:
-//		_xdr_argument = (xdrproc_t) xdr_TEST;
-//		_xdr_result = (xdrproc_t) xdr_TEST;
+		_xdr_argument = (xdrproc_t) xdr_TEST;
+		_xdr_result = (xdrproc_t) xdr_TEST;
 		local = (char *(*)(char *, struct svc_req *)) test_proc_2_svc;
 		break;
 
 	default:
-//		svcerr_noproc (transp);
-//		return;
+		svcerr_noproc (transp);
+		return;
 	}
-//	memset ((char *)&argument, 0, sizeof (argument));
-//	if (!svc_getargs (transp, (xdrproc_t) _xdr_argument, (caddr_t) &argument)) {
-//		svcerr_decode (transp);
-//		return;
-//	}
-//	result = (*local)((char *)&argument, rqstp);
-//	if (result != NULL && !svc_sendreply(transp, (xdrproc_t) _xdr_result, result)) {
-//		svcerr_systemerr (transp);
-//	}
-//	if (!svc_freeargs (transp, (xdrproc_t) _xdr_argument, (caddr_t) &argument)) {
-//		fprintf (stderr, "%s", "unable to free arguments");
-//		exit (1);
-//	}
+	memset ((char *)&argument, 0, sizeof (argument));
+	if (!svc_getargs (transp, (xdrproc_t) _xdr_argument, (caddr_t) &argument)) {
+		svcerr_decode (transp);
+		return;
+	}
+	result = (*local)((char *)&argument, rqstp);
+	if (result != NULL && !svc_sendreply(transp, (xdrproc_t) _xdr_result, result)) {
+		svcerr_systemerr (transp);
+	}
+	if (!svc_freeargs (transp, (xdrproc_t) _xdr_argument, (caddr_t) &argument)) {
+		fprintf (stderr, "%s", "unable to free arguments");
+		exit (1);
+	}
 	return;
 }
 
@@ -62,9 +62,10 @@ main (int argc, char **argv)
 {
 	register SVCXPRT *transp;
 
-//	pmap_unset (TEST_PROG, TEST_VER);
+	pmap_unset (TEST_PROG, TEST_VER);
 
-//	transp = svcudp_create(RPC_ANYSOCK);
+	transp = svcudp_create(RPC_ANYSOCK);
+//    fprintf (stderr, "%d", transp);
 	if (transp == NULL) {
 		fprintf (stderr, "%s", "cannot create udp service.");
 		exit(1);
