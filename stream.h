@@ -49,9 +49,17 @@ public:
 
 class FdInputStream : public InputStream {
     int fd;
+    int len;
 
     int read(char *ch) override {
-        return readFd(fd, *ch) ? 1 : 0;
+        if (len == -1) {
+            return readFd(fd, *ch) ? 1 : 0;
+        } else if (len == 0) {
+            return 0;
+        } else {
+            len--;
+            return readFd(fd, *ch) ? 1 : 0;
+        }
     }
 
     void close() override {
@@ -60,8 +68,9 @@ class FdInputStream : public InputStream {
 
 public:
 
-    explicit FdInputStream(int fd) {
+    explicit FdInputStream(int fd, int len = -1) {
         this->fd = fd;
+        this->len = len;
     }
 };
 

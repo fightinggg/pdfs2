@@ -4,11 +4,13 @@
 
 volatile bool fdstop = false;
 
+bool readBlockFd(int fd, char &ch) {
+    return recv(fd, &ch, 1, 0) == 1;
+}
+
 bool readFd(int fd, char &ch) {
-    for (int i = 0; true; i++) {
-        if (fdstop) {
-            return false;
-        }
+    return readBlockFd(fd, ch);
+    while (!fdstop) {
 
         fd_set fdread;
         FD_ZERO(&fdread);
@@ -26,9 +28,14 @@ bool readFd(int fd, char &ch) {
         }
 
 
-        if (recv(fd, &ch, 1, 0) == 1) {
+        long read = recv(fd, &ch, 1, 0);
+        if (read == 1) {
             return true;
         } else {
+            ::printf("select=%d,fd=%d,read=%ld, nothings to read", ret, fd, read);
+            ::fflush(stdout);
+            sleep(1);
+            continue;
             return false;
         }
     }
