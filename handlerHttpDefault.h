@@ -12,6 +12,6 @@ void doHttpDefault(const HttpReq &req, HttpRsp &rsp) {
     rspdata += "URL = " + req.url + "\n";
     rspdata += "404 NOT FOUND ERROR\n";
 
-    rsp.status = 404;
+    rsp.status = 200;
     rsp.body = new StringInputStream(rspdata);
 }

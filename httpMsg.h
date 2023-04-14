@@ -11,6 +11,8 @@ struct HttpReq {
     string method;
     map<string, string> headers;
     InputStream *body;
+
+    string httpSplit;
 };
 
 struct HttpRsp {

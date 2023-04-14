@@ -17,8 +17,10 @@ int main(int argc, char **args) {
 
     initPdfsSystem(argc, args);
 
+    srand(time(0));
 
-    int port = 8080;
+    int port = 8050 + (::rand() % 100);
+    port=8080;
 
     ///定义sockfd
     int server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
