@@ -24,6 +24,8 @@ bool decodeHttpLine(int fd, HttpReq &req) {
         }
     }
 
+    printf("request line: %s\n", reqLine.data());
+
     vector<string> reqlinesplit;
     splitString(reqLine, reqlinesplit, " ");
     if (reqlinesplit.size() != 3) {
@@ -41,23 +43,30 @@ bool decodeHttpHeaders(int fd, HttpReq &req) {
     char ch;
     int size = 0;
 
+    string headers;
+
     while (true) {
         if (!readFd(fd, ch)) {
             // nothing to read , skip
-            return true;
+            ::printf("recv header: \n%s\n", headers.data());
+            return false;
         }
+        headers += ch;
         if (ch == '\r') {
             continue;
         }
         if (ch == '\n') {
             size++;
             if (size == 2) {
-                return true;
+                break;
             }
         } else {
             size = 0;
         }
     }
+    ::printf("recv header: \n%s\n", headers.data());
+    fflush(stdout);
+    return true;
 }
 
 bool decodeHttp(int fd, HttpReq &req) {
@@ -69,20 +78,28 @@ bool decodeHttp(int fd, HttpReq &req) {
         req.body = nullptr;
         return false;
     }
-    req.body = new FdInputStream(fd);
-    printf("recv: %s %s\n", req.method.data(), req.url.data());
+    if (req.method == "GET") {
+        req.body = new StringInputStream("");
+    } else {
+        req.body = new StringInputStream(""); //new FdInputStream(fd, -1); // stoi(req.headers["Contents-Length"])
+    }
+//    printf("recv: %s %s\n", req.method.data(), req.url.data());
     return true;
 }
 
 
-void doHandlerHttpSimple(int fd) {
+bool doHandlerHttpSimple(int fd) {
     HttpReq req;
     HttpRsp rsp;
     rsp.body = nullptr;
 
     if (!decodeHttp(fd, req)) {
-        rsp.status = 400;
-    } else if (startsWith(req.url, "/api/")) {
+        return false;
+    } else if (req.method == "OPTIONS" && startsWith(req.url, "/")) {
+        // doHttpApiRead(req, rsp);
+        rsp.status = 200;
+        ::puts("YES");
+    } else if (startsWith(req.url, "/api")) {
         doApi(req, rsp);
     } else {
         doHttpDefault(req, rsp);
@@ -95,11 +112,13 @@ void doHandlerHttpSimple(int fd) {
     codeString[403] = "Forbidden";
     codeString[404] = "NotFound";
 
-    string header = "HTTP/1.0 " + to_string(rsp.status) + " " + codeString[rsp.status] + "\n";
+    string header = "HTTP/1.1 " + to_string(rsp.status) + " " + codeString[rsp.status] + "\n";
     int bodySize = rsp.body == nullptr ? 0 : rsp.body->size();
     if (bodySize != -1) {
         header += "Content-Length: " + to_string(bodySize) + "\n";
     }
+    header += "Connection: close\n";
+
     header += "\n";
 
     send(fd, header.data(), header.size(), 0);
@@ -115,6 +134,7 @@ void doHandlerHttpSimple(int fd) {
         rsp.body->close();
         delete rsp.body;
     }
+//    ::fflush(fd);
 
 
 
@@ -122,10 +142,43 @@ void doHandlerHttpSimple(int fd) {
     delete req.body;
 //    }
 
+    return true;
+}
+
+void readAll(int fd) {
+    char ch;
+    int size = 0;
+    while (readFd(fd, ch)) {
+        ::printf("%c", ch);
+        ::fflush(stdout);
+
+        if (ch == '\n') {
+            size++;
+        } else if (ch == '\r') {
+        } else {
+            size = 0;
+        }
+
+        if (size == 2) {
+            string rsp = "HTTP/1.1 200 OK\nContent-Length: 0\nConnection: keep-alive\n\n";
+            send(fd, rsp.data(), rsp.size(), 0);
+        }
+    }
 }
 
 void doHandlerHttp(int fd) {
-    doHandlerHttpSimple(fd);
+//    readAll(fd);
+//    ::puts("END\n");
+//    fflush(stdout);
+//    close(fd);
+//    return;
+
+    while (doHandlerHttpSimple(fd)) {
+        fflush(stdout);
+//        break;
+    }
+    fflush(stdout);
     close(fd);
     printf("close fd=%d\n", fd);
+    fflush(stdout);
 }

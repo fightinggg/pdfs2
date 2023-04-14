@@ -24,7 +24,7 @@
 using namespace std;
 
 
-#include "oncrpc/nfs.h"
+//#include "oncrpc/nfs.h"
 //#include "oncrpc/nfs_svc.c"
 //#include "oncrpc/nfs_clnt.c"
 //#include "oncrpc/nfs_xdr.c"
