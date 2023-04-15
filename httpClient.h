@@ -10,45 +10,35 @@ static size_t writeMemoryCallback(void *contents, size_t size, size_t nmemb, voi
     for (int i = 0; i < size * nmemb; i++) {
         body->push(contentsChar[i]);
     }
-//    printf("size=%d\n", (int) realsize);
-    fflush(stdout);
+
+//    printf("recv http size=%d\n", (int) realsize);
+//    fflush(stdout);
     return realsize;
 };
 
 
-static size_t headerCallback(char *buffer, size_t size, size_t nitems, void *userdata) {
-//    printf("headerCallback?");
-//    fflush(stdout);
-
-
-    size_t nbytes = size * nitems;
-//    ::printf("%s", string(buffer, nbytes).data());
-//    fflush(stdout);
-
-    return nbytes;
-}
-
-
 bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
-    rsp.body = new BlockQueueInputStream();
+    auto it = shared_ptr<InputStream>(new BlockQueueInputStream());
+    rsp.body = new SmartPointInputStream(it);
 
 
     struct Node {
         string url;
-        InputStream *rspdata{};
+        shared_ptr<InputStream> rspdata{};
         map<string, string> reqheaders;
     };
 
     Node *node = new Node;
     node->url = "https://" + req.host + ":" + to_string(req.port) + req.url;
-    node->rspdata = rsp.body;
+    node->rspdata = shared_ptr<InputStream>(it);
     node->reqheaders = req.headers;
 
     // req and rsp maybe remove
     submit([](void *args) -> void * {
         auto node = (Node *) args;
 
-        auto body = (BlockQueueInputStream *) node->rspdata;
+        auto smartIt = node->rspdata;
+        auto body = (BlockQueueInputStream *) smartIt.get();
         auto url = node->url;
         auto reqheaders = node->reqheaders;
 
@@ -73,9 +63,7 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
             curl_easy_setopt(curl, CURLOPT_URL, url.data());
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
-
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, body);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -86,7 +74,11 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
             if (res != CURLE_OK) {
                 printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
             }
+//            printf("BlockQueueInputStream _close. res=%d\n", res);
+//            fflush(stdout);
+
             body->closePush();
+            curl_slist_free_all(chunk);
             curl_easy_cleanup(curl);
         }
 

@@ -10,10 +10,15 @@ static void stop_handler(int sig) { // can be called asynchronously
     fdstop = true;
 }
 
+static void SIGPIPE_handler(int sig) { // can be called asynchronously
+    puts("\nSIGPIPE");
+}
+
 int main(int argc, char **args) {
     threadinit();
 
     signal(SIGINT, stop_handler);
+    signal(SIGPIPE, stop_handler);
 
     initPdfsSystem(argc, args);
 

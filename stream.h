@@ -4,16 +4,17 @@
 #include "allheader.h"
 #include "sync/block_queue.h"
 #include "io/fdio.h"
+#include "Supplayer.h"
 
 
 class InputStream {
-private:
+public:
+
     // return !=1, if nothing to read.
-    virtual int read(char *) {
+    virtual bool read(char *) {
         printf("InputStream virtual int read");
         exit(-1);
     }
-
 
 public:
     virtual ~InputStream() = default;
@@ -37,7 +38,7 @@ public:
             }
 
             char ch;
-            if (read(&ch) != 1) {
+            if (!read(&ch)) {
                 return res;
             } else {
                 res += ch;
@@ -51,7 +52,7 @@ class FdInputStream : public InputStream {
     int fd;
     int len;
 
-    int read(char *ch) override {
+    bool read(char *ch) override {
         if (len == -1) {
             return readFd(fd, *ch) ? 1 : 0;
         } else if (len == 0) {
@@ -80,7 +81,7 @@ class StringInputStream : public InputStream {
     int readed = 0;
 
 
-    int read(char *ch) override {
+    bool read(char *ch) override {
         if (readed < s.size()) {
             *ch = s[readed++];
             return 1;
@@ -112,19 +113,21 @@ class BlockQueueInputStream : public InputStream {
     volatile bool _closeWrite = false;
 
 
-    int read(char *ch) override {
+    bool read(char *ch) override {
         int i = 0;
         while (true) {
             if (_close) {
-                return 0;
+                return false;
             }
+            bool closeBeforeTimeout = _closeWrite;
             if (blockingQueue.pop(*ch, 100)) {
-                return 1;
+                return true;
             }
             if (i++ == 30) {
-                return 0;
+                printf("ERROR:BlockQueueInputStream timeout\n");
+                return false;
             }
-            if (_closeWrite) {
+            if (closeBeforeTimeout && _closeWrite) {
                 _close = true;
             }
         }
@@ -147,7 +150,213 @@ public:
         _closeWrite = true;
     }
 
+    ~ BlockQueueInputStream() {
+//        printf("BlockQueueInputStream delete");
+//        fflush(stdout);
+    }
+
     explicit BlockQueueInputStream() = default;
 };
 
 
+class ChunkInputStream : public InputStream {
+    int fd;
+    int chunkSize; // -1 is end
+
+
+    bool read(char *ch) override {
+        if (chunkSize == 0) {
+//            ::printf("decode chunkSize");
+            while (true) {
+                if (readFd(fd, *ch) != 1) {
+                    break;
+                }
+//                ::printf("%c", *ch);
+//                ::fflush(stdout);
+
+                if (*ch == '\r') {
+                    continue;
+                }
+                if (*ch == '\n') {
+                    break;
+                }
+                if (*ch >= '0' && *ch <= '9') {
+                    chunkSize = chunkSize * 16 + (*ch - '0');
+                } else if (*ch >= 'a' && *ch <= 'f') {
+                    chunkSize = chunkSize * 16 + (*ch - 'a' + 10);
+                } else if (*ch >= 'A' && *ch <= 'F') {
+                    chunkSize = chunkSize * 16 + (*ch - 'A' + 10);
+                } else {
+                    int a = 1;
+                    a++;
+                }
+            }
+
+            if (chunkSize == 0) {
+                chunkSize = -1;
+            }
+
+        }
+        if (chunkSize == -1) {
+            return 0;
+        } else {
+            chunkSize--;
+            int res = readFd(fd, *ch);
+            if (res == 1 && chunkSize == 0) {
+                char tmp;
+                readFd(fd, tmp);
+                if (tmp == '\r') {
+                    readFd(fd, tmp);
+                }
+                if (tmp != '\n') {
+                    return 0;
+                }
+            }
+            return res;
+
+        }
+    }
+
+    void close() override {
+    }
+
+    int size() override {
+        return -1;
+    }
+
+public:
+
+    explicit ChunkInputStream(int fd) {
+        this->fd = fd;
+        this->chunkSize = 0;
+    }
+};
+
+class SubInputStream : public InputStream {
+    InputStream *in;
+    int skip;
+    int remain;
+
+
+    bool read(char *ch) override {
+        if (skip != 0) {
+            printf("skip[%d]\n", skip);
+            int readTotal = in->readNbytes(skip).size();
+            if (readTotal != skip) {
+                remain = 0;
+                printf("SubInputStream READ ERROR read[%d]!=skip[%d]\n", readTotal, skip);
+                fflush(stdout);
+                skip = 0;
+                return false;
+            }
+            skip = 0;
+        }
+        if (remain == 0) {
+            return false;
+        }
+        remain--;
+        if (in->read(ch)) {
+            return true;
+        } else {
+            printf("SubInputStream READ ERROR readnoting, remain=%d\n", remain + 1);
+            remain = 0;
+            return false;
+        }
+    }
+
+    void close() override {
+        in->close();
+    }
+
+    int size() override {
+        return remain;
+    }
+
+
+public:
+
+    ~SubInputStream() override {
+        delete in;
+    }
+
+    explicit SubInputStream(InputStream *in, int skip, int remain) {
+        this->in = in;
+        this->skip = skip;
+        this->remain = remain;
+    }
+};
+
+
+class MergeInputStream : public InputStream {
+    InputStream *in;
+    Supplayer<InputStream> *next;
+    InputStream *nextIn;
+    int remain;
+
+
+    bool read(char *ch) override {
+        if (remain == 0) {
+            return false;
+        }
+        remain--;
+
+        if (nextIn == nullptr) {
+            if (in->read(ch)) {
+                return true;
+            } else {
+                nextIn = next->get();
+            }
+        }
+        return nextIn->read(ch);
+    }
+
+    void close() override {
+        in->close();
+    }
+
+    int size() override {
+        return remain;
+    }
+
+
+public:
+
+    ~MergeInputStream() override {
+        delete in;
+        delete next;
+        delete nextIn;
+    }
+
+    explicit MergeInputStream(InputStream *in, Supplayer<InputStream> *next, int size) {
+        this->in = in;
+        this->next = next;
+        this->nextIn = nullptr;
+        this->remain = size;
+    }
+};
+
+
+class SmartPointInputStream : public InputStream {
+    shared_ptr<InputStream> in;
+
+    bool read(char *ch) override {
+        return in->read(ch);
+    }
+
+    void close() override {
+        in->close();
+    }
+
+    int size() override {
+        return in->size();
+    }
+
+
+public:
+
+
+    explicit SmartPointInputStream(shared_ptr<InputStream> i) {
+//        printf("new Smart %ld\n", i);
+        this->in = shared_ptr<InputStream>(i);
+    }
+};

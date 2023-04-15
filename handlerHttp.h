@@ -6,6 +6,11 @@
 #include "stringUtils.h"
 #include "io/fdio.h"
 
+struct Context {
+    bool is100;
+    HttpReq lastReq;
+};
+
 bool decodeHttpLine(int fd, HttpReq &req) {
     req.httpSplit = "\n";
 
@@ -23,14 +28,14 @@ bool decodeHttpLine(int fd, HttpReq &req) {
         }
         if (ch == '\r') {
             req.httpSplit = "\r\n";
-            ::printf("httpSplit=\\r\\n\n");
+//            ::printf("httpSplit=\\r\\n\n");
         }
         if (ch == '\n') {
             break;
         }
     }
 
-    printf("request line: %s\n", reqLine.data());
+    printf("request line: [%s]\n", reqLine.data());
 
     vector<string> reqlinesplit;
     splitString(reqLine, reqlinesplit, " ");
@@ -54,7 +59,7 @@ bool decodeHttpHeaders(int fd, HttpReq &req) {
     while (true) {
         if (!readFd(fd, ch)) {
             // nothing to read , skip
-            ::printf("recv header: \n%s\n", headers.data());
+//            ::printf("recv header: \n%s\n", headers.data());
             return false;
         }
         headers += ch;
@@ -82,11 +87,11 @@ bool decodeHttpHeaders(int fd, HttpReq &req) {
         vector<string> head;
         int i = item.find(":");
         if (i != -1) {
-            req.headers[item.substr(0, i)] = item.substr(i + 1, item.size());
+            req.headers[item.substr(0, i)] = trim(item.substr(i + 1, item.size()));
         }
     }
-    ::printf("recv header: \n%s\n", h2.data());
-    fflush(stdout);
+//    ::printf("recv header: \n%s\n", h2.data());
+//    fflush(stdout);
     return true;
 }
 
@@ -102,121 +107,155 @@ bool decodeHttp(int fd, HttpReq &req) {
     if (req.method == "GET") {
         req.body = new StringInputStream("");
     } else {
-        string len = req.headers["Content-Length"];
-        if (len.empty()) {
-            req.body = new StringInputStream("");
+
+        if (req.headers["Transfer-Encoding"] == "chunked") {
+            // chunked 协议
+            // Transfer-Encoding: chunked 是 HTTP 协议中用于分块传输编码的一种方式，它允许 HTTP 传输无限长度的数据流而不需要知道实际的内容大小。
+            //
+            //具体来说，当服务器发送响应时设置 Transfer-Encoding: chunked 头，并将消息体分成多个块。每个块前面都会有一个十六进制数字，
+            // 用于指示该块的字节数。最后一个块的大小为0，表示数据已经全部传输完成。客户端在接收到每个块后，解析该块包含的字节数并将其存储
+            // 到缓冲区中，直到接收到大小为0的最后一个块为止。
+            //
+            //使用分块传输编码的好处是可以在传输过程中动态生成和发送数据，而不需要等待整个消息生成完毕才能开始发送，从而提高了 HTTP 数据传输的效率和灵活性。
+            req.body = new ChunkInputStream(fd);
         } else {
-            int lensize = stoi(len);
-            ::printf("size: %s\n", len.data());
-            req.body = new FdInputStream(fd, lensize);
-            auto data = req.body->readNbytes(lensize);
-            printf("%s\n", data.data());
-            req.body = new StringInputStream(data);
+
+            string len = req.headers["Content-Length"];
+
+            if (len.empty()) {
+                req.body = new StringInputStream("");
+            } else {
+                int lensize = stoi(len);
+                ::printf("size: %s\n", len.data());
+                req.body = new FdInputStream(fd, lensize);
+                auto data = req.body->readNbytes(lensize);
+                printf("%s\n", data.data());
+                req.body = new StringInputStream(data);
+            }
         }
+
     }
 //    printf("recv: %s %s\n", req.method.data(), req.url.data());
     return true;
 }
 
-string a = "123";
 
-bool doHandlerHttpSimple(int fd) {
+bool doHandlerHttpSimple(int fd, Context &context) {
     HttpReq req;
     HttpRsp rsp;
     rsp.body = nullptr;
 
-    if (!decodeHttp(fd, req)) {
+    bool decode;
+
+    if (context.is100) {
+        decode = true;
+        req = context.lastReq;
+        req.body = new ChunkInputStream(fd);
+    } else {
+        decode = decodeHttp(fd, req);
+    }
+
+    if (!decode) {
         return false;
-    } else if (req.method == "OPTIONS" && startsWith(req.url, "/")) {
-        // doHttpApiRead(req, rsp);
+    } else if (req.method == "HEAD" && startsWith(req.url, "/a.txt")) {
         rsp.status = 200;
-        rsp.headers["DAV"] = "1, 2";
-        rsp.headers["Allow"] = " OPTIONS, LOCK, DELETE, PROPPATCH, COPY, MOVE, UNLOCK, PROPFIND";
-        rsp.headers["MS-Author-Via"] = "DAV";
-    } else if (req.method == "PROPFIND" && startsWith(req.url, "/")) {
-        // doHttpApiRead(req, rsp);
-        rsp.status = 207;
-        rsp.headers["Content-Type"] = "text/xml;charset=UTF-8";
-        rsp.body = new StringInputStream("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n"
-                                         "<D:multistatus xmlns:D=\"DAV:\">\n"
-                                         "<D:response>\n"
-                                         "<D:href>/</D:href>\n"
-                                         "<D:propstat>\n"
-                                         "<D:prop>\n"
-                                         "<D:creationdate>2023-04-14T14:18:28Z</D:creationdate>\n"
-                                         "<D:displayname><![CDATA[null]]></D:displayname>\n"
-                                         "<D:getlastmodified>Fri, 14 Apr 2023 14:18:28 GMT</D:getlastmodified>\n"
-                                         "<D:resourcetype>\n"
-                                         "<D:collection/>\n"
-                                         "</D:resourcetype>\n"
-                                         "<D:source></D:source>\n"
-                                         "<D:supportedlock><D:lockentry><D:lockscope><D:exclusive/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockentry><D:lockentry><D:lockscope><D:shared/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockentry></D:supportedlock>\n"
-                                         "</D:prop>\n"
-                                         "<D:status>HTTP/1.1 200 </D:status>\n"
-                                         "</D:propstat>\n"
-                                         "</D:response>\n"
-                                         "<D:response>\n"
-                                         "<D:href>/a.txt</D:href>\n"
-                                         "<D:propstat>\n"
-                                         "<D:prop>\n"
-                                         "<D:creationdate>2023-04-14T14:18:28Z</D:creationdate>\n"
-                                         "<D:displayname><![CDATA[a.txt]]></D:displayname>\n"
-                                         "<D:getlastmodified>Fri, 14 Apr 2023 14:18:28 GMT</D:getlastmodified>\n"
-                                         "<D:getcontentlength>11</D:getcontentlength>\n"
-                                         "<D:getcontenttype>text/plain</D:getcontenttype>\n"
-                                         "<D:getetag>W/\"11-1681481908190\"</D:getetag>\n"
-                                         "<D:resourcetype/>\n"
-                                         "<D:source></D:source>\n"
-                                         "<D:supportedlock><D:lockentry><D:lockscope><D:exclusive/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockentry><D:lockentry><D:lockscope><D:shared/></D:lockscope><D:locktype><D:write/></D:locktype></D:lockentry></D:supportedlock>\n"
-                                         "</D:prop>\n"
-                                         "<D:status>HTTP/1.1 200 </D:status>\n"
-                                         "</D:propstat>\n"
-                                         "</D:response>\n"
-                                         "</D:multistatus>\n");
+        rsp.headers["Content-Length"] = to_string(10240000);
+        rsp.headers["accept-ranges"] = "bytes";
     } else if (req.method == "GET" && startsWith(req.url, "/a.txt")) {
-        // doHttpApiRead(req, rsp);
         rsp.status = 200;
-        rsp.body = new StringInputStream(a);
-    } else if (req.method == "LOCK" && startsWith(req.url, "/a.txt")) {
-        // doHttpApiRead(req, rsp);
-        rsp.status = 200;
-        rsp.headers["Content-Type"] = "application/xml; charset=utf-8";
-        int t = ::time(0);
-        string times = to_string(t);
-        rsp.headers["Lock-Token"] = "<" + times + ">";
-        rsp.body = new StringInputStream("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-                                         "<D:prop xmlns:D=\"DAV:\"><D:lockdiscovery><D:activelock>\n"
-                                         "\t<D:locktype><D:write/></D:locktype>\n"
-                                         "\t<D:lockscope><D:exclusive/></D:lockscope>\n"
-                                         "\t<D:depth>0</D:depth>\n"
-                                         "\t<D:owner></D:owner>\n"
-                                         "\t<D:timeout>Second-1800</D:timeout>\n"
-                                         "\t<D:locktoken><D:href>" + times +
-                                         "</D:href></D:locktoken>\n"
-                                         "\t<D:lockroot><D:href>a.txt</D:href></D:lockroot>\n"
-                                         "</D:activelock></D:lockdiscovery></D:prop>\n");
+        string range = req.headers["Range"];
+        if (range.substr(0, 6) == "bytes=") {
+            string rangePair = range.substr(6, range.size());
+            vector<string> split;
+            splitString(rangePair, split, "-");
+            if (split.size() == 2) {
+                int start = stoi(split[0]);
+                int end = stoi(split[1]);
+//                rsp.body = new StringInputStream(a.substr(start, minInt(end - start + 1, (int) a.size())));
+                rsp.body = read(start, end);
+            }
+        }
+
     } else if (req.method == "PUT" && startsWith(req.url, "/a.txt")) {
+//        if (req.headers["Expect"] == "100-continue") {
+//            req.headers.erase("Expect");
+//            // Expect: 100-continue 是 HTTP 协议中的一个头部，用于告诉服务器在客户端发送实体正文（例如POST或PUT请求）之前，需要先进行预检。
+//            // 当客户端发送带有 Expect: 100-continue 头部的请求时，服务器将返回一个 HTTP/1.1 100 Continue 状态码表示可以继续发送实体正文
+//            // 。如果服务器不支持 Expect: 100-continue，会返回一个 417 Expectation Failed 状态码。
+//            //
+//            //使用 Expect: 100-continue 头部的主要目的是为了防止客户端发送大量数据而服务器无法处理的情况。通过进行预检，客户端可以确保服务器能够接受并处理其发送的数据，从而避免浪费网络资源和时间。
+//            //
+//            //需要注意的是，并非所有服务器都支持 Expect: 100-continue 头部，因此应该谨慎使用它。如果服务器不支持预检，则客户端可能需要等待超时时间才能收到响应，这会影响请求的响应时间。
+//            rsp.status = 200;
+//            context.is100 = true;
+//            context.lastReq = req;
+//        } else
+        {
+            string data100 = "HTTP/1.1 100\n\n";
+            send(fd, data100.data(), data100.size(), 0);
+
+            rsp.status = 200;
+            string contentRange = req.headers["Content-Range"];
+            if (contentRange.substr(0, 6) == "bytes ") {
+                contentRange = contentRange.substr(6, contentRange.size());
+                vector<string> split;
+                splitString(contentRange, split, "/");
+                if (split.size() == 2) {
+                    contentRange = split[0];
+                    splitString(contentRange, split, "-");
+                    if (split.size() == 2) {
+                        int start = max(0, stoi(split[0]));
+                        int end = stoi(split[1]);
+
+//                        string allData = req.body->readNbytes();
+
+                        write(start, end, req.body);
+
+//                        ::printf("all body:%zu\n", allData.size());
+//                        fflush(stdout);
+
+                        rsp.status = 200;
+//                        context.is100 = false;
+//                        context.lastReq = req;
+                    }
+                }
+            }
+        }
+
+
+    } else if (req.method == "GET" && startsWith(req.url, "/read")) {
         rsp.status = 200;
-        a = req.body->readNbytes();
-        printf("a=%s", a.data());
-    } else if (startsWith(req.url, "/api")) {
-        doApi(req, rsp);
+        vector<string> split;
+        string pair = req.url.substr(6);
+        splitString(pair, split, "/");
+        if (split.size() == 2) {
+            int start = stoi(split[0]);
+            int end = stoi(split[1]);
+            end = minInt(end, start + 10240);
+            rsp.body = read(start, end);
+        } else {
+            rsp.body = read(0, 10240);
+        }
     } else {
         doHttpDefault(req, rsp);
     }
 
 
     map<int, string> codeString;
+    codeString[100] = "Continue";
     codeString[200] = "ok";
     codeString[400] = "BadRequest";
     codeString[403] = "Forbidden";
     codeString[404] = "NotFound";
+    codeString[417] = "Expectation Failed";
 
-    string header = "HTTP/1.1 " + to_string(rsp.status) + " " + codeString[rsp.status] + req.httpSplit;
-    int bodySize = rsp.body == nullptr ? 0 : rsp.body->size();
+    string resline = "HTTP/1.1 " + to_string(rsp.status) + " " + codeString[rsp.status] + req.httpSplit;
+    string header = resline;
+    int bodySize = rsp.body == nullptr ? -1 : rsp.body->size();
     if (bodySize != -1) {
         header += "Content-Length: " + to_string(bodySize) + req.httpSplit;
     }
+//        header += "Connection: Close" + req.httpSplit;
     header += "Connection: Keep-Alive" + req.httpSplit;
     for (const auto &item: rsp.headers) {
         header += item.first + ": " + item.second + req.httpSplit;
@@ -224,8 +263,10 @@ bool doHandlerHttpSimple(int fd) {
 
     header += req.httpSplit;
 
-    printf("\n\n===response:\n%s", header.data());
+    printf("res: %s", resline.data());
     send(fd, header.data(), header.size(), 0);
+
+    long sendSize = 0;
 
     if (rsp.body != nullptr) {
         while (true) {
@@ -233,9 +274,10 @@ bool doHandlerHttpSimple(int fd) {
             if (data.empty()) {
                 break;
             }
-            printf("%s", data.data());
+            sendSize += data.size();
             send(fd, data.data(), data.size(), 0);
         }
+
         rsp.body->close();
         delete rsp.body;
     }
@@ -246,6 +288,11 @@ bool doHandlerHttpSimple(int fd) {
 //    if (req.body != nullptr) {
     delete req.body;
 //    }
+
+    printf("send %ld bytes\n", sendSize);
+    if (sendSize != bodySize && bodySize != -1) {
+        return false;
+    }
 
     return true;
 }
@@ -264,10 +311,6 @@ void readAll(int fd) {
             size = 0;
         }
 
-        if (size == 2) {
-            string rsp = "HTTP/1.1 200 OK\nContent-Length: 0\nConnection: keep-alive\n\n";
-            send(fd, rsp.data(), rsp.size(), 0);
-        }
     }
 }
 
@@ -278,11 +321,26 @@ void doHandlerHttp(int fd) {
 //    close(fd);
 //    return;
 
-    while (doHandlerHttpSimple(fd)) {
-        fflush(stdout);
-        break;
+    Context context;
+    context.is100 = false;
+    for (int i = 0; i < 10; i++) {
+        if (doHandlerHttpSimple(fd, context)) {
+            fflush(stdout);
+        } else {
+            fflush(stdout);
+            break;
+        }
+
+//        if (context.is100) {
+//            readAll(fd);
+//            break;
+//        }
     }
-    fflush(stdout);
+
+//    string rsp = "HTTP/1.1 200 OK\nContent-Length: 0\nConnection: keep-alive\n\n";
+//    send(fd, rsp.data(), rsp.size(), 0);
+//    readAll(fd);
+
     close(fd);
     printf("close fd=%d\n\n\n", fd);
     fflush(stdout);

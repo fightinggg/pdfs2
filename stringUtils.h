@@ -30,6 +30,7 @@ int findIndex(const char *s, int len, const char *sub, int sublen) {
 
 
 void splitString(const std::string &s, std::vector<std::string> &v, const std::string &c) {
+    v.clear();
     if (c.empty()) {
         printf("splitString ERROR");
         exit(-1);
@@ -56,3 +57,18 @@ bool startsWith(const std::string &str, const std::string &prefix) {
     return str.substr(0, prefix.size()) == prefix;
 }
 
+
+string trim(string s) {
+    string res;
+    bool allIsEmpty = true;
+    for (auto ch: s) {
+        allIsEmpty = ch == ' ' && allIsEmpty;
+        if (!allIsEmpty) {
+            res += ch;
+        }
+    }
+    while (!res.empty() && res.back() == ' ') {
+        res.pop_back();
+    }
+    return res;
+}

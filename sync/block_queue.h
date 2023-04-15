@@ -5,9 +5,8 @@ class BlockingQueue {
 public:
     // 将元素添加到队列
     void push(const T& value) {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
         queue_.push(value);
-        lock.unlock();
         cond_var_.notify_one();
     }
 

@@ -6,6 +6,6 @@ void doHttpApiRead(const HttpReq &req, HttpRsp &rsp) {
 
     string more = req.url.substr(strlen("/api/read/"));
 
-    rsp.body = read(more);
+    rsp.body = read(0, 1024);
     rsp.status = 200;
 }
