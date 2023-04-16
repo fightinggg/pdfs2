@@ -22,14 +22,14 @@ docker run --restart=always -d -p 9999:9999 -p 8080:8080 --privileged --name pdf
 ```shell
 
 # 启动 server
-# docker build -t  pdfs .  && docker rm -f pdfs &&  docker run -d -p 9999:9999 --name pdfs pdfs bash /app/start.sh && docker logs -f pdfs
+docker build -t  pdfs .  && docker rm -f pdfs &&  docker run -d -p 9999:9999 --name pdfs pdfs bash /app/start.sh --githubToken=$GITHUBTOKEN && docker logs -f pdfs
 # 装载设备 【有问题，因此无法合并到第一步中】 & 分区 & 挂载
-# modprobe nbd
-# nbd-client $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $( docker ps -aqf "name=pdfs")) 9999 /dev/nbd9001
-# fdisk /dev/nbd9001
-# mkfs -t ext4 /dev/nbd9001
-# mkdir -p /mnt/nbd9001 && mount /dev/nbd9001 /mnt/nbd9001
-# chmod -R 777 /mnt/nbd9001 && chown -R root:root /mnt/nbd9001
+modprobe nbd
+nbd-client $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $( docker ps -aqf "name=pdfs")) 9999 /dev/nbd9005
+fdisk /dev/nbd9005
+mkfs -t ext4 /dev/nbd9002
+mkdir -p /mnt/nbd9002 && mount /dev/nbd9002 /mnt/nbd9002
+chmod -R 777 /mnt/nbd9002 && chown -R root:root /mnt/nbd9001
 # 启动 webdav 服务
 # docker rm -f webdav  && docker run --restart always --detach --name webdav --publish 7000:8080 --env WEBDAV_USERNAME=myuser --env WEBDAV_PASSWORD=mypassword  --volume  /mnt/nbd9001:/media ionelmc/webdav
 ```

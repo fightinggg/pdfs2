@@ -2,7 +2,7 @@
 # 9999 端口用作nbd server，对bdb client开放，不对外开发
 
 nbdkit curl -p 9999 url=http://localhost:8080/a.txt
-/app/pdfs
+/app/pdfs $@
 
 
 

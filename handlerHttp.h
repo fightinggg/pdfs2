@@ -82,7 +82,7 @@ bool doHandlerHttpSimple(int fd, Context &context) {
 
 //                        string allData = req.body->readNbytes();
 
-                        write(start, end, req.body);
+                        write(start, end - 1, req.body);
 
 //                        ::printf("all body:%zu\n", allData.size());
 //                        fflush(stdout);

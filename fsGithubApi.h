@@ -142,9 +142,13 @@ void _githubWriteRawBase64(const map<string, string> &fs, int block, shared_ptr<
     rsp.body->close();
 }
 
+string datamem(100 << 20, ' ');
 
 // base64 IO
 shared_ptr<InputStream> _githubRead(const map<string, string> &fs, int block) {
+    // debug
+    return shared_ptr<InputStream>(new StringInputStream(datamem.substr(block * githubBlockSize, githubBlockSize)));
+
     auto res = _githubReadRawBase64(fs, block);
     if (res == nullptr) {
         return nullptr;
@@ -153,6 +157,12 @@ shared_ptr<InputStream> _githubRead(const map<string, string> &fs, int block) {
 }
 
 void _githubWrite(const map<string, string> &fs, int block, shared_ptr<InputStream> in, string old) {
+    // debug
+    for (int i = 0; i < githubBlockSize; i++) {
+        in->read(&datamem[block * githubBlockSize + i]);
+    }
+    return;
+
     auto oldBase64InputStream = shared_ptr<InputStream>(
             new Base64EncoderInputStream(shared_ptr<InputStream>(new StringInputStream(old)), old.size()));
     old = oldBase64InputStream->readNbytes();
@@ -203,18 +213,21 @@ shared_ptr<InputStream> githubApiFsRead(const map<string, string> &fs, int start
 }
 
 void githubApiFswrite(const map<string, string> &fs, int start, int end, const shared_ptr<InputStream> &in) {
+    string all = in->readNbytes(end - start + 1);
+    if (all.size() != end - start + 1) {
+        printf("ERROR write data, all.size()!=end-start+1, %ld!=%d", all.size(), end - start + 1);
+        return;
+    }
+
     while (start <= end) {
         int startBlockIndex = start / githubBlockSize;
+        int tmpend = startBlockIndex * githubBlockSize + githubBlockSize - 1;
         auto oldBody = _githubRead(fs, startBlockIndex);
 
         string old = oldBody == nullptr ? "" : oldBody->readNbytes();
-        string all = in->readNbytes(end - start + 1);
-        if (all.size() != end - start + 1) {
-            printf("ERROR write data, all.size()!=end-start+1");
-            return;
-        }
+
         string newData = old.size() == githubBlockSize ? old : string(githubBlockSize, '\0');
-        for (int i = start; i <= end; i++) {
+        for (int i = start; i <= tmpend; i++) {
             newData[i % githubBlockSize] = all[i - start];
         }
         auto writeData = shared_ptr<InputStream>(new StringInputStream(newData));
