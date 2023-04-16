@@ -112,13 +112,19 @@ bool doHandlerHttpSimple(int fd, Context &context) {
         } else {
             rsp.body = read(0, 10240 - 1);
         }
-//        static string vv = "";
-//        vv += to_string(rand() % 2);
-//        rsp.body = new StringInputStream(vv);
-//        rsp.body = new StringInputStream(randomBinaryString(1024));
-//        int size = rsp.body->size();
-//        rsp.body = new Base64EncoderInputStream(rsp.body, size);
-//        rsp.body = new Base64DecoderInputStream(rsp.body, size);
+        rsp.body = shared_ptr<InputStream>(new BinaryStringInputStream(shared_ptr<InputStream>(rsp.body)));
+    } else if (req.method == "GET" && startsWith(req.url, "/write")) {
+        rsp.status = 200;
+        vector<string> split;
+        string pair = req.url.substr(minInt(7, req.url.size()));
+        splitString(pair, split, "/");
+        if (split.size() == 3) {
+            int start = stoi(split[0]);
+            int end = stoi(split[1]);
+            int v = stoi(split[2]);
+            write(start, end - 1, shared_ptr<InputStream>(new StringInputStream(string(end - start, v))));
+        }
+        rsp.body = read(0, 10240 - 1);
         rsp.body = shared_ptr<InputStream>(new BinaryStringInputStream(shared_ptr<InputStream>(rsp.body)));
     } else {
         doHttpDefault(req, rsp);

@@ -24,7 +24,7 @@ class BinaryStringInputStream : public InputStream {
                 return false;
             }
 
-            queue[2] = binaryString[(*ch) & 0xf];
+            queue[2] = binaryString[(*ch >> 4) & 0xf];
             queue[3] = binaryString[(*ch) & 0xf];
             if (*ch >= 32 && *ch <= 126) {
                 queue[5] = *ch;
@@ -50,7 +50,7 @@ class BinaryStringInputStream : public InputStream {
 
 public:
 
-    explicit BinaryStringInputStream(const shared_ptr<InputStream>& in) {
+    explicit BinaryStringInputStream(const shared_ptr<InputStream> &in) {
         this->in = in;
         this->totalSize = in->size();
         if (totalSize != -1) {

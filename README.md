@@ -45,13 +45,27 @@ chmod -R 777 /mnt/nbd9002 && chown -R root:root /mnt/nbd9001
 
 
 开发脚本
+
 ```shell
+# fsck /dev/nbd$PORT
+
 sudo su
-PORT=10023
+PORT=10026
 nbdkit curl -p  $PORT url=http://localhost:8080/a.txt
 nbd-client localhost $PORT /dev/nbd$PORT
 fdisk /dev/nbd$PORT
 mkfs -t ext4 /dev/nbd$PORT
 mkdir -p /mnt/nbd$PORT && mount /dev/nbd$PORT /mnt/nbd$PORT
-chmod -R 777 /mnt/nbd9002 && chown -R root:root /mnt/nbd9001
+chmod -R 777 /mnt/nbd$PORT && chown -R root:root /mnt/nbd$PORT
+```
+
+更好看的前端
+```shell
+docker run -d \
+-p 5212:5212 \
+--mount type=bind,source=/data/cloudreve/conf.ini,target=/cloudreve/conf.ini \
+--mount type=bind,source=/data/cloudreve/cloudreve.db,target=/cloudreve/cloudreve.db \
+-v /dev/nbd$PORT:/cloudreve/uploads \
+-v /data/cloudreve/avatar:/cloudreve/avatar \
+cloudreve/cloudreve:latest
 ```

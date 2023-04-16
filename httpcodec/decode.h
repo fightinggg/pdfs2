@@ -75,8 +75,11 @@ bool decodeHttpRspLine(shared_ptr<InputStream> in, string &httpSplit, int &statu
     vector<string> reqlinesplit;
     splitString(reqLine, reqlinesplit, " ");
 
-    status = stoi(reqlinesplit[1]);
-    return true;
+    if (reqlinesplit.size() > 0) {
+        status = stoi(reqlinesplit[1]);
+        return true;
+    }
+    return false;
 }
 
 
@@ -124,7 +127,7 @@ bool decodeHttpHeaders(shared_ptr<InputStream> in, map<string, string> &header) 
     return true;
 }
 
-bool decodeReqHttp(const shared_ptr<InputStream>& in, HttpReq &req) {
+bool decodeReqHttp(const shared_ptr<InputStream> &in, HttpReq &req) {
     if (!decodeHttpReqLine(in, req.httpSplit, req.method, req.url)) {
         req.body = nullptr;
         return false;

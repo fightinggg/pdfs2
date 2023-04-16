@@ -59,7 +59,7 @@ static int base64RevMap[128] = {
 };
 
 class Base64EncoderInputStream : public InputStream {
-    shared_ptr<InputStream>in;
+    shared_ptr<InputStream> in;
     int rawSize;
     int newSize;
 
@@ -79,8 +79,8 @@ class Base64EncoderInputStream : public InputStream {
             readSize += (rawSize-- > 0 && in->read(queue + 1)) ? 1 : 0;
             readSize += (rawSize-- > 0 && in->read(queue + 2)) ? 1 : 0;
             queue[3] = char((queue[2])); // 00000000 00000000 00******
-            queue[2] = char((queue[2] >> 6) | (queue[1] << 2)); // 00000000 0000**** **000000
-            queue[1] = char((queue[1] >> 4) | (queue[0] << 4));  // 000000** ****0000 00000000
+            queue[2] = char((queue[2] >> 6 & 0x03) | (queue[1] << 2)); // 00000000 0000**** **000000
+            queue[1] = char((queue[1] >> 4 & 0x0f) | (queue[0] << 4));  // 000000** ****0000 00000000
             queue[0] = char((queue[0] >> 2));// ******00 00000000 00000000
 
             queue[3] = base64Map[0x3f & queue[3]];
@@ -112,7 +112,7 @@ class Base64EncoderInputStream : public InputStream {
 public:
 
 
-    explicit Base64EncoderInputStream(shared_ptr<InputStream>in, int rawSize) {
+    explicit Base64EncoderInputStream(shared_ptr<InputStream> in, int rawSize) {
         this->in = in;
         this->rawSize = rawSize;
         this->newSize = (rawSize + 2) / 3 * 4;
@@ -124,7 +124,7 @@ public:
 };
 
 class Base64DecoderInputStream : public InputStream {
-    shared_ptr<InputStream>in;
+    shared_ptr<InputStream> in;
     int sizeBeforeEncode;
     int sizeAfterEncode;
 
@@ -176,3 +176,36 @@ public:
         this->sizeAfterEncode = (sizeBeforeEncode + 2 / 3) * 4;
     }
 };
+
+void testBase64() {
+    srand(time(0));
+    for (int i = 0; i < 1e5; i++) {
+        string s;
+
+        int len = 3;
+        for (int i = 0; i < len; i++) {
+            s += (rand() & 0xff);
+        }
+
+        auto sin2 = shared_ptr<InputStream>(new StringInputStream(s));
+        auto encode2 = shared_ptr<InputStream>(new Base64EncoderInputStream(sin2, len));
+
+        printf("%s\n", encode2->readNbytes().data());
+
+        auto sin = shared_ptr<InputStream>(new StringInputStream(s));
+        auto encode = shared_ptr<InputStream>(new Base64EncoderInputStream(sin, len));
+        auto decode = shared_ptr<InputStream>(new Base64DecoderInputStream(encode, len));
+        auto x = decode->readNbytes();
+        if (x != s) {
+            printf("%s\n", shared_ptr<InputStream>(
+                    new BinaryStringInputStream(
+                            shared_ptr<InputStream>(new StringInputStream(s))))->readNbytes().data());
+            printf("%s\n", shared_ptr<InputStream>(
+                    new BinaryStringInputStream(
+                            shared_ptr<InputStream>(new StringInputStream(x))))->readNbytes().data());
+            exit(-1);
+
+        }
+    }
+
+}

@@ -3,6 +3,7 @@
 #include "threadpool/threadpool.h"
 #include <curl/curl.h>
 
+
 static size_t writeMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
     char *contentsChar = (char *) contents;
@@ -39,6 +40,7 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
 
     // req and rsp maybe remove
     submit([](void *args) -> void * {
+
         auto node = (Node *) args;
 
         auto smartIt = node->rspdata;
@@ -85,6 +87,7 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
 
             if (res != CURLE_OK) {
                 printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                exit(-1);
             }
 //            printf("BlockQueueInputStream _close. res=%d\n", res);
 //            fflush(stdout);

@@ -12,10 +12,15 @@
 #include "inputstreams/SplitNewLineStream.h"
 
 const int githubBlockSize = 10240; // 10KB every files
+const bool debug = false;
+
+
+int readCnt = 0;
+int writeCnt = 0;
 
 string encodeFileName(int block) {
-    // github can save as most 500MB, so here is 5000*1024 = 5120000 files
-    static char buf[20];
+    // github can save as most 500MB, so here is 500*1024 = 512000 files
+    static char buf[30];
     sprintf(buf, "%d-%010d.bin", githubBlockSize, block);
     return string(buf);
 }
@@ -43,7 +48,19 @@ string githubShaCompute(const string &old) {
 
 
 // raw IO
+string datamem(100 << 20, 'A');
+
 shared_ptr<InputStream> _githubReadRawBase64(const map<string, string> &fs, int block) {
+    readCnt++;
+    printf("readCnt=%d\n", readCnt);
+    if (debug) {
+        int githubBase64Block = (githubBlockSize + 2) / 3 * 4;
+        auto res = shared_ptr<InputStream>(
+                new StringInputStream(
+                        datamem.substr(block * githubBase64Block, block * githubBase64Block + githubBase64Block)));
+        return res;
+    }
+
     string fileName = encodeFileName(block);
     string githubUsername = "fightinggg";
     string githubRepoName = "pdfs-data-githubapi";
@@ -74,6 +91,11 @@ shared_ptr<InputStream> _githubReadRawBase64(const map<string, string> &fs, int 
     string s2 = rsp.body->readNbytes();
     rsp.body = shared_ptr<InputStream>(new StringInputStream(s2));
 
+    if (s2.length() < 10000 && rsp.status != 404) {
+        int a = 0;
+        a++;
+    }
+
     if (rsp.status == 404) {
         return nullptr;
     } else if (rsp.status == 200) {
@@ -89,6 +111,23 @@ shared_ptr<InputStream> _githubReadRawBase64(const map<string, string> &fs, int 
 }
 
 void _githubWriteRawBase64(const map<string, string> &fs, int block, shared_ptr<InputStream> in, string old) {
+    writeCnt++;
+    printf("writeCnt=%d\n", writeCnt);
+
+    if (debug) {
+        int githubBase64Block = (githubBlockSize + 2) / 3 * 4;
+        auto s = in->readNbytes();
+        int x = s.size();
+        if (x != githubBase64Block) {
+            exit(-1);
+        }
+        for (int i = 0; i < githubBase64Block; i++) {
+            datamem[block * githubBase64Block + i] = s.at(i);
+        }
+        return;
+    }
+
+
     string fileName = encodeFileName(block);
     string githubUsername = "fightinggg";
     string githubRepoName = "pdfs-data-githubapi";
@@ -145,16 +184,36 @@ void _githubWriteRawBase64(const map<string, string> &fs, int block, shared_ptr<
 
     httpsRequest(req, rsp);
 
-//    puts(rsp.body->readNbytes(2000).data());
+
+    auto body = rsp.body;
+    rsp.body = nullptr;
+    decodeHttpRsp(body, rsp.status, rsp.headers, rsp.body);
+
+    if (rsp.status == 404) {
+    } else if (rsp.status == 201) {
+    } else if (rsp.status == 200) {
+    } else {
+        printf("ERROR: github return status=%d", rsp.status);
+        string s = rsp.body->readNbytes();
+        rsp.body = shared_ptr<InputStream>(new StringInputStream(s));
+        printf("body=%s", s.data());
+        exit(-1);
+    }
+
+
     rsp.body->close();
 }
 
-string datamem(100 << 20, ' ');
 
 // base64 IO
+
+//char buf[100 << 20];
+
+// 读取二进制数据
 shared_ptr<InputStream> _githubRead(const map<string, string> &fs, int block) {
-    // debug
-//    return shared_ptr<InputStream>(new StringInputStream(datamem.substr(block * githubBlockSize, githubBlockSize)));
+//    return shared_ptr<InputStream>(new StringInputStream(
+//            string(buf + block * githubBlockSize, buf + block * githubBlockSize + githubBlockSize)));
+//
 
     auto res = _githubReadRawBase64(fs, block);
     if (res == nullptr) {
@@ -163,18 +222,64 @@ shared_ptr<InputStream> _githubRead(const map<string, string> &fs, int block) {
     return shared_ptr<InputStream>(new Base64DecoderInputStream(res, githubBlockSize));
 }
 
+// 写入二进制数据
 void _githubWrite(const map<string, string> &fs, int block, shared_ptr<InputStream> in, string old) {
-    // debug
-//    for (int i = 0; i < githubBlockSize; i++) {
-//        in->read(&datamem[block * githubBlockSize + i]);
+//    in = shared_ptr<InputStream>(
+//            new Base64DecoderInputStream(shared_ptr<InputStream>(new Base64EncoderInputStream(in, githubBlockSize)),
+//                                         githubBlockSize));
+//    for (int i = block * githubBlockSize; i < block * githubBlockSize + githubBlockSize; i++) {
+//        in->read(buf + i);
 //    }
 //    return;
+
 
     auto oldBase64InputStream = shared_ptr<InputStream>(
             new Base64EncoderInputStream(shared_ptr<InputStream>(new StringInputStream(old)), old.size()));
     old = oldBase64InputStream->readNbytes();
     _githubWriteRawBase64(fs, block, shared_ptr<InputStream>(new Base64EncoderInputStream(in, githubBlockSize)), old);
 }
+
+
+// empty IO// empty IO// empty IO// empty IO// empty IO// empty IO// empty IO
+bitset<500 * 1024> unInit;
+bool emptySetInit = false;
+
+shared_ptr<InputStream> _githubReadEmpty(const map<string, string> &fs, int block) {
+
+
+    if (!emptySetInit) {
+        // 临时使用，每次程序启动后，清楚所有文件
+        emptySetInit = true;
+        for (int i = 0; i < unInit.size(); i++) {
+            unInit[i] = true;
+        }
+    }
+    if (unInit[block]) {
+        return shared_ptr<InputStream>(new StringInputStream(string(githubBlockSize, '\0')));
+    } else {
+        return _githubRead(fs, block);
+    }
+}
+
+void _githubWriteEmpty(const map<string, string> &fs, int block, shared_ptr<InputStream> in, string old) {
+
+    bool isAllZero = true;
+    auto all = in->readNbytes();
+    for (int i = 0; i < all.size(); i++) {
+        if (all[i] != 0) {
+            isAllZero = false;
+            break;
+        }
+    }
+    if (!isAllZero || !unInit[block]) {
+        unInit[block] = false;
+        auto oldI = _githubRead(fs, block);
+        old = oldI == nullptr ? "" : oldI->readNbytes();
+        return _githubWrite(fs, block, shared_ptr<InputStream>(new StringInputStream(all)), old);
+    }
+}
+
+
 
 
 // multiBlock IO
@@ -187,7 +292,7 @@ shared_ptr<InputStream> githubApiFsRead(const map<string, string> &fs, int start
 
     int startBlockIndex = start / githubBlockSize;
     int endBlockIndex = end / githubBlockSize;
-    auto body = _githubRead(fs, startBlockIndex);
+    auto body = _githubReadEmpty(fs, startBlockIndex);
     if (body == nullptr) {
         body = shared_ptr<InputStream>(new StringInputStream(string(githubBlockSize, '\0')));
     }
@@ -222,26 +327,27 @@ shared_ptr<InputStream> githubApiFsRead(const map<string, string> &fs, int start
 void githubApiFswrite(const map<string, string> &fs, int start, int end, const shared_ptr<InputStream> &in) {
     string all = in->readNbytes(end - start + 1);
     if (all.size() != end - start + 1) {
-        printf("ERROR write data, all.size()!=end-start+1, %ld!=%d", all.size(), end - start + 1);
+        printf("ERROR write data, all.size()!=end-tmpStart+1, %ld!=%d", all.size(), end - start + 1);
         return;
     }
 
-    while (start <= end) {
-        int startBlockIndex = start / githubBlockSize;
-        int tmpend = startBlockIndex * githubBlockSize + githubBlockSize - 1;
-        auto oldBody = _githubRead(fs, startBlockIndex);
+    int tmpStart = start;
+    while (tmpStart <= end) {
+        int startBlockIndex = tmpStart / githubBlockSize;
+        int tmpend = min(startBlockIndex * githubBlockSize + githubBlockSize - 1, end);
+        auto oldBody = _githubReadEmpty(fs, startBlockIndex);
 
         string old = oldBody == nullptr ? "" : oldBody->readNbytes();
 
         string newData = old.size() == githubBlockSize ? old : string(githubBlockSize, '\0');
-        for (int i = start; i <= tmpend; i++) {
-            newData[i % githubBlockSize] = all[i - start];
+        for (int i = tmpStart; i <= tmpend; i++) {
+            newData[i % githubBlockSize] = all.at(i - start);
         }
         auto writeData = shared_ptr<InputStream>(new StringInputStream(newData));
-        _githubWrite(fs, startBlockIndex, writeData, old);
+        _githubWriteEmpty(fs, startBlockIndex, writeData, old);
 
 
-        start = (startBlockIndex + 1) * githubBlockSize;
+        tmpStart = (startBlockIndex + 1) * githubBlockSize;
 
     }
 }

@@ -14,8 +14,11 @@ static void SIGPIPE_handler(int sig) { // can be called asynchronously
     puts("\nSIGPIPE");
 }
 
+
+
 int main(int argc, char **args) {
 
+//    testBase64();
 
     threadinit();
 
