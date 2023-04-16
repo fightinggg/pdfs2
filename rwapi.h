@@ -10,12 +10,12 @@ void initPdfsSystem(int argc, char **args) {
     initPdfs(&pdfs, argc, args);
 }
 
-InputStream *read(int start, int end) {
+shared_ptr<InputStream> read(int start, int end) {
     return fsRead(pdfs.fs[0], start, end);
 }
 
 
-void write(int start, int end, InputStream *in) {
+void write(int start, int end, shared_ptr<InputStream> in) {
     fswrite(pdfs.fs[0], start, end, in);
 }
 

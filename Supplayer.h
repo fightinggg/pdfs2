@@ -6,10 +6,10 @@ public:
 
     virtual  ~Supplayer() = default;
 
-    virtual T *get();
+    virtual T get();
 };
 
 template<class T>
-T *Supplayer<T>::get() {
+T Supplayer<T>::get() {
     return nullptr;
 }

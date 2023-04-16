@@ -15,17 +15,24 @@ static void SIGPIPE_handler(int sig) { // can be called asynchronously
 }
 
 int main(int argc, char **args) {
+
+
     threadinit();
 
     signal(SIGINT, stop_handler);
-    signal(SIGPIPE, stop_handler);
+    signal(SIGPIPE, SIG_IGN);
+//    signal(SIGPIPE, SIGPIPE_handler);
 
     initPdfsSystem(argc, args);
+
+
+//    write(3, 13, new StringInputStream(string(11, '2')));
+
 
     srand(time(0));
 
     int port = 8050 + (::rand() % 100);
-    port=8080;
+    port = 8080;
 
     ///定义sockfd
     int server_sockfd = socket(AF_INET, SOCK_STREAM, 0);

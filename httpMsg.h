@@ -10,7 +10,7 @@ struct HttpReq {
     string url;
     string method;
     map<string, string> headers;
-    InputStream *body;
+    shared_ptr<InputStream> body;
 
     string httpSplit;
 };
@@ -18,5 +18,5 @@ struct HttpReq {
 struct HttpRsp {
     int status;
     map<string, string> headers;
-    InputStream *body;
+    shared_ptr<InputStream> body;
 };

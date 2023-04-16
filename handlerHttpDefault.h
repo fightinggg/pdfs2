@@ -13,5 +13,5 @@ void doHttpDefault(const HttpReq &req, HttpRsp &rsp) {
     rspdata += "404 NOT FOUND ERROR\n";
 
     rsp.status = 200;
-    rsp.body = new StringInputStream(rspdata);
+    rsp.body = shared_ptr<InputStream>(new StringInputStream(rspdata));
 }

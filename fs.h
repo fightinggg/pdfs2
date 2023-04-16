@@ -2,7 +2,7 @@
 #include "stream.h"
 #include "fsGithubApi.h"
 
-void fswrite(map<string, string> fs, int start, int end, InputStream *inputStream) {
+void fswrite(map<string, string> fs, int start, int end,shared_ptr<InputStream>inputStream) {
     if (fs["type"] == "systemfile") {
 
     } else if (fs["type"] == "githubapi") {
@@ -10,7 +10,7 @@ void fswrite(map<string, string> fs, int start, int end, InputStream *inputStrea
     }
 }
 
-InputStream *fsRead(map<string, string> fs, int start, int end) {
+shared_ptr<InputStream> fsRead(map<string, string> fs, int start, int end) {
     if (fs["type"] == "systemfile") {
         return nullptr;
     } else if (fs["type"] == "githubapi") {

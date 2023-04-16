@@ -31,6 +31,7 @@ public:
     }
 
     string readNbytes(int n = -1) {
+        n = minInt(n, size());
         string res;
         while (true) {
             if (n != -1 && res.size() == n) {
@@ -116,16 +117,15 @@ class BlockQueueInputStream : public InputStream {
     bool read(char *ch) override {
         int i = 0;
         while (true) {
-            if (_close) {
+            if (_close || fdstop) {
                 return false;
             }
             bool closeBeforeTimeout = _closeWrite;
             if (blockingQueue.pop(*ch, 100)) {
                 return true;
             }
-            if (i++ == 30) {
-                printf("ERROR:BlockQueueInputStream timeout\n");
-                return false;
+            if (i++ == 300) {
+                printf("WARN:BlockQueueInputStream timeout\n");
             }
             if (closeBeforeTimeout && _closeWrite) {
                 _close = true;
@@ -150,17 +150,12 @@ public:
         _closeWrite = true;
     }
 
-    ~ BlockQueueInputStream() {
-//        printf("BlockQueueInputStream delete");
-//        fflush(stdout);
-    }
-
     explicit BlockQueueInputStream() = default;
 };
 
 
 class ChunkInputStream : public InputStream {
-    int fd;
+    shared_ptr<InputStream> in;
     int chunkSize; // -1 is end
 
 
@@ -168,7 +163,7 @@ class ChunkInputStream : public InputStream {
         if (chunkSize == 0) {
 //            ::printf("decode chunkSize");
             while (true) {
-                if (readFd(fd, *ch) != 1) {
+                if (!in->read(ch)) {
                     break;
                 }
 //                ::printf("%c", *ch);
@@ -201,12 +196,12 @@ class ChunkInputStream : public InputStream {
             return 0;
         } else {
             chunkSize--;
-            int res = readFd(fd, *ch);
+            int res = in->read(ch);
             if (res == 1 && chunkSize == 0) {
                 char tmp;
-                readFd(fd, tmp);
+                in->read(&tmp);
                 if (tmp == '\r') {
-                    readFd(fd, tmp);
+                    in->read(&tmp);
                 }
                 if (tmp != '\n') {
                     return 0;
@@ -226,14 +221,15 @@ class ChunkInputStream : public InputStream {
 
 public:
 
-    explicit ChunkInputStream(int fd) {
-        this->fd = fd;
+
+    explicit ChunkInputStream(shared_ptr<InputStream> in) {
+        this->in = in;
         this->chunkSize = 0;
     }
 };
 
 class SubInputStream : public InputStream {
-    InputStream *in;
+    shared_ptr<InputStream> in;
     int skip;
     int remain;
 
@@ -275,11 +271,8 @@ class SubInputStream : public InputStream {
 
 public:
 
-    ~SubInputStream() override {
-        delete in;
-    }
 
-    explicit SubInputStream(InputStream *in, int skip, int remain) {
+    explicit SubInputStream(shared_ptr<InputStream> in, int skip, int remain) {
         this->in = in;
         this->skip = skip;
         this->remain = remain;
@@ -288,9 +281,9 @@ public:
 
 
 class MergeInputStream : public InputStream {
-    InputStream *in;
-    Supplayer<InputStream> *next;
-    InputStream *nextIn;
+    shared_ptr<InputStream> in;
+    shared_ptr<Supplayer<shared_ptr<InputStream>>> next;
+    shared_ptr<InputStream> nextIn;
     int remain;
 
 
@@ -304,7 +297,7 @@ class MergeInputStream : public InputStream {
             if (in->read(ch)) {
                 return true;
             } else {
-                nextIn = next->get();
+                nextIn = shared_ptr<InputStream>(next->get());
             }
         }
         return nextIn->read(ch);
@@ -321,13 +314,7 @@ class MergeInputStream : public InputStream {
 
 public:
 
-    ~MergeInputStream() override {
-        delete in;
-        delete next;
-        delete nextIn;
-    }
-
-    explicit MergeInputStream(InputStream *in, Supplayer<InputStream> *next, int size) {
+    explicit MergeInputStream(shared_ptr<InputStream> in, shared_ptr<Supplayer<shared_ptr<InputStream>>> next, int size) {
         this->in = in;
         this->next = next;
         this->nextIn = nullptr;

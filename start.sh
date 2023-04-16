@@ -37,7 +37,7 @@ nbdkit curl -p 9999 url=http://localhost:8080/a.txt
 # nbdkit memory 1M -p 9014
 # nbd-client localhost 9014 /dev/nbd9014
 
-# --privileged --cap-add=ALL -v /dev:/dev -v /lib/modules:/lib/modules
+# --privileged --cap-add=ALL -v /dev:/dev -v /libsrc/modules:/libsrc/modules
 
 # docker build -t  pdfs .  && docker rm -f pdfs &&  docker run -it --privileged  --name pdfs  pdfs bash
 

@@ -19,19 +19,23 @@ static size_t writeMemoryCallback(void *contents, size_t size, size_t nmemb, voi
 
 bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
     auto it = shared_ptr<InputStream>(new BlockQueueInputStream());
-    rsp.body = new SmartPointInputStream(it);
+    rsp.body = shared_ptr<InputStream>(new SmartPointInputStream(it));
 
 
     struct Node {
         string url;
         shared_ptr<InputStream> rspdata{};
         map<string, string> reqheaders;
+        string method;
+        string reqbody;
     };
 
     Node *node = new Node;
     node->url = "https://" + req.host + ":" + to_string(req.port) + req.url;
     node->rspdata = shared_ptr<InputStream>(it);
     node->reqheaders = req.headers;
+    node->method = req.method;
+    node->reqbody = req.body != nullptr ? req.body->readNbytes() : "";
 
     // req and rsp maybe remove
     submit([](void *args) -> void * {
@@ -41,6 +45,8 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
         auto body = (BlockQueueInputStream *) smartIt.get();
         auto url = node->url;
         auto reqheaders = node->reqheaders;
+        auto method = node->method;
+        auto reqbody = node->reqbody;
 
         puts(url.data());
 
@@ -62,9 +68,15 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
 
             curl_easy_setopt(curl, CURLOPT_URL, url.data());
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.data());
+
+            ::printf("write github :\n%s\n", reqbody.data());
+
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, reqbody.data());
 
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, body);
+            curl_easy_setopt(curl, CURLOPT_HEADER, 1L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
@@ -157,6 +169,6 @@ bool httpRequest(const HttpReq &req, HttpRsp &rsp) {
         return false;
     }
     // 接收GitHub服务器响应消息
-    rsp.body = new FdInputStream(socket_desc);
+    rsp.body = shared_ptr<InputStream>(new FdInputStream(socket_desc));
     return true;
 }
