@@ -144,7 +144,7 @@ bool doHandlerHttpSimple(int fd, Context &context) {
 
     header += req.httpSplit;
 
-    printf("res: %s", resline.data());
+//    printf("res: %s", resline.data());
     send(fd, header.data(), header.size(), 0);
 
     long sendSize = 0;
@@ -156,7 +156,11 @@ bool doHandlerHttpSimple(int fd, Context &context) {
                 break;
             }
             sendSize += data.size();
-            send(fd, data.data(), data.size(), 0);
+            if (send(fd, data.data(), data.size(), 0) == -1) {
+                rsp.body->close();
+                printf("SEND ERROR\n");
+                return false;
+            }
         }
 
         rsp.body->close();

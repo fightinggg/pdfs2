@@ -32,10 +32,10 @@ bool readFd(int fd, char &ch) {
         if (read == 1) {
             return true;
         } else {
-            ::printf("select=%d,fd=%d,read=%ld, nothings to read", ret, fd, read);
+            ::printf("select=%d,fd=%d,read=%ld, nothings to read\n", ret, fd, read);
             ::fflush(stdout);
-            sleep(1);
-            continue;
+//            sleep(1);
+//            continue;
             return false;
         }
     }

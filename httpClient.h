@@ -70,7 +70,7 @@ bool httpsRequest(HttpReq &req, HttpRsp &rsp) {
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.data());
 
-            ::printf("write github :\n%s\n", reqbody.data());
+//            ::printf("write github :\n%s\n", reqbody.data());
 
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, reqbody.data());
 

@@ -30,7 +30,7 @@ bool decodeHttpReqLine(shared_ptr<InputStream> in, string &httpSplit, string &me
         httpSplit = "\n";
     }
 
-    printf("request line: [%s]\n", reqLine.data());
+//    printf("request line: [%s]\n", reqLine.data());
 
     vector<string> reqlinesplit;
     splitString(reqLine, reqlinesplit, " ");
@@ -69,7 +69,7 @@ bool decodeHttpRspLine(shared_ptr<InputStream> in, string &httpSplit, int &statu
         httpSplit = "\n";
     }
 
-    printf("rsp line: [%s]\n", reqLine.data());
+//    printf("rsp line: [%s]\n", reqLine.data());
 
     vector<string> reqlinesplit;
     splitString(reqLine, reqlinesplit, " ");
