@@ -163,6 +163,11 @@ void _githubWrite(const map<string, string> &fs, int block, shared_ptr<InputStre
 // multiBlock IO
 
 shared_ptr<InputStream> githubApiFsRead(const map<string, string> &fs, int start, int end) {
+
+    if (end - start > 10 << 20) { // > 10MB
+        return shared_ptr<InputStream>(new StringInputStream(""));
+    }
+
     int startBlockIndex = start / githubBlockSize;
     int endBlockIndex = end / githubBlockSize;
     auto body = _githubRead(fs, startBlockIndex);
