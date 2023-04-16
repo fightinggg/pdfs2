@@ -11,7 +11,14 @@
 #include "inputstreams/BinaryStringInputStream.h"
 #include "inputstreams/SplitNewLineStream.h"
 
-const int githubBlockSize = 1024; // 1KB every files
+const int githubBlockSize = 10240; // 10KB every files
+
+string encodeFileName(int block) {
+    // github can save as most 500MB, so here is 5000*1024 = 5120000 files
+    static char buf[20];
+    sprintf(buf, "%d-%010d.bin", githubBlockSize, block);
+    return string(buf);
+}
 
 string toHex(const string &old) {
     string res;
@@ -37,7 +44,7 @@ string githubShaCompute(const string &old) {
 
 // raw IO
 shared_ptr<InputStream> _githubReadRawBase64(const map<string, string> &fs, int block) {
-    string fileName = to_string(githubBlockSize) + "-" + to_string(block) + ".bin";
+    string fileName = encodeFileName(block);
     string githubUsername = "fightinggg";
     string githubRepoName = "pdfs-data-githubapi";
     string githubToken = fs.at("githubToken");
@@ -82,7 +89,7 @@ shared_ptr<InputStream> _githubReadRawBase64(const map<string, string> &fs, int 
 }
 
 void _githubWriteRawBase64(const map<string, string> &fs, int block, shared_ptr<InputStream> in, string old) {
-    string fileName = to_string(githubBlockSize) + "-" + to_string(block) + ".bin";
+    string fileName = encodeFileName(block);
     string githubUsername = "fightinggg";
     string githubRepoName = "pdfs-data-githubapi";
     string githubToken = fs.at("githubToken");
@@ -126,19 +133,19 @@ void _githubWriteRawBase64(const map<string, string> &fs, int block, shared_ptr<
                 "sha": "%s"
             }
             )"";
-        printf("old: %s\n", old.data());
+//        printf("old: %s\n", old.data());
         templateString = ::sprintf(buf, templateString.data(), inputString.data(), githubShaCompute(old).data());
     }
     req.body = shared_ptr<InputStream>(new StringInputStream(string(buf)));
 
 //    auto base64I = new Base64DecoderInputStream(new StringInputStream(inputString), githubBlockSize);
-//   shared_ptr<InputStream>x = new BinaryStringInputStream(base64I);
+//   shared_ptr<InputStream.h>x = new BinaryStringInputStream(base64I);
 //    ::printf("write github :\n%s\n", x->readNbytes().data());
 
 
     httpsRequest(req, rsp);
 
-    puts(rsp.body->readNbytes(2000).data());
+//    puts(rsp.body->readNbytes(2000).data());
     rsp.body->close();
 }
 
@@ -147,7 +154,7 @@ string datamem(100 << 20, ' ');
 // base64 IO
 shared_ptr<InputStream> _githubRead(const map<string, string> &fs, int block) {
     // debug
-    return shared_ptr<InputStream>(new StringInputStream(datamem.substr(block * githubBlockSize, githubBlockSize)));
+//    return shared_ptr<InputStream>(new StringInputStream(datamem.substr(block * githubBlockSize, githubBlockSize)));
 
     auto res = _githubReadRawBase64(fs, block);
     if (res == nullptr) {
@@ -158,10 +165,10 @@ shared_ptr<InputStream> _githubRead(const map<string, string> &fs, int block) {
 
 void _githubWrite(const map<string, string> &fs, int block, shared_ptr<InputStream> in, string old) {
     // debug
-    for (int i = 0; i < githubBlockSize; i++) {
-        in->read(&datamem[block * githubBlockSize + i]);
-    }
-    return;
+//    for (int i = 0; i < githubBlockSize; i++) {
+//        in->read(&datamem[block * githubBlockSize + i]);
+//    }
+//    return;
 
     auto oldBase64InputStream = shared_ptr<InputStream>(
             new Base64EncoderInputStream(shared_ptr<InputStream>(new StringInputStream(old)), old.size()));

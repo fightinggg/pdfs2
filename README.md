@@ -25,8 +25,8 @@ docker run --restart=always -d -p 9999:9999 -p 8080:8080 --privileged --name pdf
 docker build -t  pdfs .  && docker rm -f pdfs &&  docker run -d -p 9999:9999 --name pdfs pdfs bash /app/start.sh --githubToken=$GITHUBTOKEN && docker logs -f pdfs
 # 装载设备 【有问题，因此无法合并到第一步中】 & 分区 & 挂载
 modprobe nbd
-nbd-client $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $( docker ps -aqf "name=pdfs")) 9999 /dev/nbd9005
-fdisk /dev/nbd9005
+nbd-client $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $( docker ps -aqf "name=pdfs")) 9999 /dev/nbd9010
+fdisk /dev/nbd9010
 mkfs -t ext4 /dev/nbd9002
 mkdir -p /mnt/nbd9002 && mount /dev/nbd9002 /mnt/nbd9002
 chmod -R 777 /mnt/nbd9002 && chown -R root:root /mnt/nbd9001
@@ -41,4 +41,17 @@ chmod -R 777 /mnt/nbd9002 && chown -R root:root /mnt/nbd9001
 ```shell
  valgrind --leak-check=full ./cmake-build-debug/pdfs --githubToken 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 
 
+```
+
+
+开发脚本
+```shell
+sudo su
+PORT=10023
+nbdkit curl -p  $PORT url=http://localhost:8080/a.txt
+nbd-client localhost $PORT /dev/nbd$PORT
+fdisk /dev/nbd$PORT
+mkfs -t ext4 /dev/nbd$PORT
+mkdir -p /mnt/nbd$PORT && mount /dev/nbd$PORT /mnt/nbd$PORT
+chmod -R 777 /mnt/nbd9002 && chown -R root:root /mnt/nbd9001
 ```

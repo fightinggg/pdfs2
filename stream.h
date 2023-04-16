@@ -1,53 +1,13 @@
 #pragma once
 
+
 #include "utils.h"
 #include "allheader.h"
 #include "sync/block_queue.h"
 #include "io/fdio.h"
 #include "Supplayer.h"
-
-
-class InputStream {
-public:
-
-    // return !=1, if nothing to read.
-    virtual bool read(char *) {
-        printf("InputStream virtual int read");
-        exit(-1);
-    }
-
-public:
-    virtual ~InputStream() = default;
-
-    virtual void close() {
-        printf("InputStream virtual void close");
-        exit(-1);
-    }
-
-    // return how much bytes remained to read
-    // return -1 if unknown
-    virtual int size() {
-        return -1;
-    }
-
-    string readNbytes(int n = -1) {
-        n = minInt(n, size());
-        string res;
-        while (true) {
-            if (n != -1 && res.size() == n) {
-                return res;
-            }
-
-            char ch;
-            if (!read(&ch)) {
-                return res;
-            } else {
-                res += ch;
-            }
-        }
-    }
-};
-
+#include "inputstreams/InputStream.h"
+#include "inputstreams/BinaryStringInputStream.h"
 
 class FdInputStream : public InputStream {
     int fd;
@@ -158,16 +118,13 @@ class ChunkInputStream : public InputStream {
     shared_ptr<InputStream> in;
     int chunkSize; // -1 is end
 
-
-    bool read(char *ch) override {
+    void flush() {
+        char ch[1];
         if (chunkSize == 0) {
-//            ::printf("decode chunkSize");
             while (true) {
                 if (!in->read(ch)) {
                     break;
                 }
-//                ::printf("%c", *ch);
-//                ::fflush(stdout);
 
                 if (*ch == '\r') {
                     continue;
@@ -190,22 +147,29 @@ class ChunkInputStream : public InputStream {
             if (chunkSize == 0) {
                 chunkSize = -1;
             }
-
         }
+    }
+
+    bool eatRN() {
+        char ch;
+        if (in->read(&ch) && ch == '\r') {
+            if (in->read(&ch) && ch == '\n') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool read(char *ch) override {
+        flush();
         if (chunkSize == -1) {
-            return 0;
+            return false;
         } else {
-            chunkSize--;
             int res = in->read(ch);
+            chunkSize--;
             if (res == 1 && chunkSize == 0) {
-                char tmp;
-                in->read(&tmp);
-                if (tmp == '\r') {
-                    in->read(&tmp);
-                }
-                if (tmp != '\n') {
-                    return 0;
-                }
+                eatRN();
+                flush();
             }
             return res;
 
@@ -225,6 +189,13 @@ public:
     explicit ChunkInputStream(shared_ptr<InputStream> in) {
         this->in = in;
         this->chunkSize = 0;
+
+//        string alldata = readNbytes();
+//        auto copy = shared_ptr<InputStream>(new StringInputStream(alldata));
+//        ::printf("alldata:\n%s\n", shared_ptr<InputStream>(new BinaryStringInputStream(copy))->readNbytes().data());
+//        this->in = shared_ptr<InputStream>(new StringInputStream(alldata));
+//        ::fflush(stdout);
+
     }
 };
 
@@ -314,7 +285,8 @@ class MergeInputStream : public InputStream {
 
 public:
 
-    explicit MergeInputStream(shared_ptr<InputStream> in, shared_ptr<Supplayer<shared_ptr<InputStream>>> next, int size) {
+    explicit MergeInputStream(shared_ptr<InputStream> in, shared_ptr<Supplayer<shared_ptr<InputStream>>> next,
+                              int size) {
         this->in = in;
         this->next = next;
         this->nextIn = nullptr;

@@ -45,7 +45,7 @@ bool doHandlerHttpSimple(int fd, Context &context) {
                 int start = stoi(split[0]);
                 int end = stoi(split[1]);
 //                rsp.body = new StringInputStream(a.substr(start, minInt(end - start + 1, (int) a.size())));
-                rsp.body = read(start, end);
+                rsp.body = read(start, end - 1);
             }
         }
 
@@ -65,7 +65,9 @@ bool doHandlerHttpSimple(int fd, Context &context) {
 //        } else
         {
             string data100 = "HTTP/1.1 100\n\n";
+//            printf("res100: %s", data100.data());
             send(fd, data100.data(), data100.size(), 0);
+
 
             rsp.status = 200;
             string contentRange = req.headers["Content-Range"];
@@ -88,6 +90,7 @@ bool doHandlerHttpSimple(int fd, Context &context) {
 //                        fflush(stdout);
 
                         rsp.status = 200;
+                        rsp.body = shared_ptr<InputStream>(new StringInputStream("Done."));
 //                        context.is100 = false;
 //                        context.lastReq = req;
                     }
@@ -105,9 +108,9 @@ bool doHandlerHttpSimple(int fd, Context &context) {
             int start = stoi(split[0]);
             int end = stoi(split[1]);
             end = minInt(end, start + 10240);
-            rsp.body = read(start, end);
+            rsp.body = read(start, end - 1);
         } else {
-            rsp.body = read(0, 10240);
+            rsp.body = read(0, 10240 - 1);
         }
 //        static string vv = "";
 //        vv += to_string(rand() % 2);
@@ -206,6 +209,8 @@ void doHandlerHttp(int fd) {
         }
     }
 
+//    string end = "\n\n\n\n\n";
+//    send(fd, end.data(), end.size(), 0);
     close(fd);
     printf("close fd=%d\n\n\n", fd);
     fflush(stdout);

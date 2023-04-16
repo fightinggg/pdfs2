@@ -35,6 +35,7 @@ bool decodeHttpReqLine(shared_ptr<InputStream> in, string &httpSplit, string &me
     vector<string> reqlinesplit;
     splitString(reqLine, reqlinesplit, " ");
     if (reqlinesplit.size() != 3) {
+        printf("decode http line error: [%s]\n", reqLine.data());
         return false;
     }
 
@@ -123,7 +124,7 @@ bool decodeHttpHeaders(shared_ptr<InputStream> in, map<string, string> &header) 
     return true;
 }
 
-bool decodeReqHttp(shared_ptr<InputStream> in, HttpReq &req) {
+bool decodeReqHttp(const shared_ptr<InputStream>& in, HttpReq &req) {
     if (!decodeHttpReqLine(in, req.httpSplit, req.method, req.url)) {
         req.body = nullptr;
         return false;

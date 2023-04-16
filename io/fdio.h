@@ -9,7 +9,7 @@ bool readBlockFd(int fd, char &ch) {
 }
 
 bool readFd(int fd, char &ch) {
-//    return readBlockFd(fd, ch);
+    //return readBlockFd(fd, ch);
     while (!fdstop) {
 
         fd_set fdread;

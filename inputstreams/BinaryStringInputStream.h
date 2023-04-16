@@ -50,7 +50,7 @@ class BinaryStringInputStream : public InputStream {
 
 public:
 
-    explicit BinaryStringInputStream(shared_ptr<InputStream> in) {
+    explicit BinaryStringInputStream(const shared_ptr<InputStream>& in) {
         this->in = in;
         this->totalSize = in->size();
         if (totalSize != -1) {
